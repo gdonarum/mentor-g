@@ -24,8 +24,15 @@ public void teleopPeriodic() {
     System.out.println("Speed: " + motor.getVelocity());
 }
 
-// GOOD - Use SmartDashboard (with throttling) or remove entirely
-SmartDashboard.putNumber("Speed", motor.getVelocity());</pre>
+// GOOD - Use a competition mode guard
+public static final boolean COMPETITION_MODE = true;
+
+public void teleopPeriodic() {
+    if (!COMPETITION_MODE) {
+        SmartDashboard.putNumber("Speed", motor.getVelocity());
+    }
+}</pre>
+      <p>Set <code>COMPETITION_MODE = true</code> before matches to disable all debug telemetry. This makes it easy to toggle debugging on/off without deleting code.</p>
 
       <h5>Fix #3: Move PhotonVision.verifyVersion() Off Main Thread</h5>
       <p>This call blocks while waiting for a network response and can stall your robot for seconds:</p>

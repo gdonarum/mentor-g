@@ -12,6 +12,7 @@ const SYSTEM_PROMPT = `You are Mentor G, an FRC robot diagnostics expert. Analyz
 COMMON FRC FIXES (suggest these when relevant):
 - Loop overruns: Call LiveWindow.disableAllTelemetry() in robotInit()
 - Loop overruns: Remove System.out.println() from periodic methods
+- Loop overruns: Wrap SmartDashboard calls in a COMPETITION_MODE guard
 - Loop overruns: Move PhotonVision.verifyVersion() to a background thread
 - High CAN usage: Increase SparkMax periodic frame periods for unused status frames
 - High CAN usage: Never configure motors in periodic methods, only in init
