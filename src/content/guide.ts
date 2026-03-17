@@ -24,15 +24,18 @@ public void teleopPeriodic() {
     System.out.println("Speed: " + motor.getVelocity());
 }
 
-// GOOD - Use a competition mode guard
-public static final boolean COMPETITION_MODE = true;
+// GOOD - Use a competition mode guard in Constants.java
+public class Constants {
+    public static final boolean COMPETITION_MODE = true;
+}
 
+// Then in your periodic methods:
 public void teleopPeriodic() {
-    if (!COMPETITION_MODE) {
+    if (!Constants.COMPETITION_MODE) {
         SmartDashboard.putNumber("Speed", motor.getVelocity());
     }
 }</pre>
-      <p>Set <code>COMPETITION_MODE = true</code> before matches to disable all debug telemetry. This makes it easy to toggle debugging on/off without deleting code.</p>
+      <p>Set <code>Constants.COMPETITION_MODE = true</code> before matches to disable all debug telemetry. This makes it easy to toggle debugging on/off without deleting code.</p>
     `,
   },
   {
@@ -183,9 +186,9 @@ public Pose2d getPose() {
       <h5>PhotonVision Performance</h5>
       <p>Vision processing can be expensive. Key optimizations:</p>
       <ul>
-        <li>Run verifyVersion() in a background thread (see Loop Overruns section)</li>
         <li>Don't process every frame — check hasTargets() before heavy computation</li>
         <li>Use pipeline switching to disable processing when not needed</li>
+        <li>Wrap debug logging in a <code>Constants.COMPETITION_MODE</code> guard</li>
       </ul>
 
       <h5>Limelight Latency Compensation</h5>

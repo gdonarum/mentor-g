@@ -20,7 +20,7 @@ Respond with JSON only:
 COMMON FRC FIXES (suggest these when relevant):
 - Loop overruns: Call LiveWindow.disableAllTelemetry() in robotInit()
 - Loop overruns: Remove System.out.println() from periodic methods
-- Loop overruns: Wrap SmartDashboard calls in a COMPETITION_MODE guard
+- Loop overruns: Wrap SmartDashboard calls in a Constants.COMPETITION_MODE guard
 - High CAN usage: Increase SparkMax periodic frame periods for unused status frames
 - High CAN usage: Never configure motors in periodic methods, only in init
 - Watchdog: Check for blocking calls (network, file I/O) in main thread
