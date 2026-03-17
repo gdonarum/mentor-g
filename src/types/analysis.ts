@@ -20,7 +20,7 @@ export interface LogFiles {
     filename: string;
     content: string;
   };
-  wpilog?: {
+  dsevents?: {
     filename: string;
     content: string;
   };

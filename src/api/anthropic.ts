@@ -1,49 +1,42 @@
 import type { AnalysisResponse, LogFiles } from '../types/analysis';
+import { getApiKey } from './config';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-20250514';
-const MAX_TOKENS = 1000;
+const MAX_TOKENS = 2048;
 
-const SYSTEM_PROMPT = `You are Mentor G, a friendly and knowledgeable FRC (FIRST Robotics Competition) robot diagnostics expert. You wear glasses, a blue hard hat with a gold star, and have circuit patterns on your cheeks.
+const SYSTEM_PROMPT = `You are Mentor G, an FRC robot diagnostics expert. Analyze logs and problems, respond with JSON only:
 
-Analyze the provided log files and/or problem description. Respond ONLY with valid JSON (no markdown code blocks, no extra text) in this exact format:
+{"summary":"...","needsRobotJava":false,"robotJavaReason":"","findings":[{"severity":"critical|warning|info|good","title":"...","description":"...","fix":"...","codeSnippet":""}]}
 
-{
-  "summary": "A brief 1-2 sentence summary of the main issue(s)",
-  "needsRobotJava": true or false (set true if seeing the Robot.java code would help diagnose the issue better, and no Robot.java was provided),
-  "robotJavaReason": "If needsRobotJava is true, explain why you need to see it",
-  "findings": [
-    {
-      "severity": "critical" | "warning" | "info" | "good",
-      "title": "Short title for this finding",
-      "description": "Detailed explanation of the issue",
-      "fix": "How to fix this issue",
-      "codeSnippet": "Optional code example showing the fix (can be empty string)"
-    }
-  ]
-}
+COMMON FRC FIXES (suggest these when relevant):
+- Loop overruns: Call LiveWindow.disableAllTelemetry() in robotInit()
+- Loop overruns: Remove System.out.println() from periodic methods
+- Loop overruns: Move PhotonVision.verifyVersion() to a background thread
+- High CAN usage: Increase SparkMax periodic frame periods for unused status frames
+- High CAN usage: Never configure motors in periodic methods, only in init
+- Watchdog: Check for blocking calls (network, file I/O) in main thread
+- Brownout: Check battery connections, reduce motor current limits
 
-Guidelines:
-- Be encouraging and helpful, like a mentor
-- Focus on common FRC issues: loop overruns, CAN bus problems, vision latency, thread blocking
-- Provide specific, actionable fixes
-- Include code snippets when helpful
-- If log files appear to be binary/unparseable, acknowledge this and work with what information is available
-- Order findings by severity (critical first)`;
+Limit to 3-5 findings. Be specific with code fixes.`;
 
 function buildUserMessage(logs: LogFiles, problemDescription: string): string {
   let message = '';
 
   if (logs.dslog) {
-    message += `## Driver Station Log (${logs.dslog.filename})\n${logs.dslog.content}\n\n`;
+    // Truncate long log content to avoid token limits
+    const content = logs.dslog.content.slice(0, 8000);
+    message += `## Driver Station Log (${logs.dslog.filename})\n${content}\n\n`;
   }
 
-  if (logs.wpilog) {
-    message += `## WPILib Log (${logs.wpilog.filename})\n${logs.wpilog.content}\n\n`;
+  if (logs.dsevents) {
+    const content = logs.dsevents.content.slice(0, 8000);
+    message += `## Driver Station Events (${logs.dsevents.filename})\n${content}\n\n`;
   }
 
   if (logs.robotJava) {
-    message += `## Robot.java (${logs.robotJava.filename})\n\`\`\`java\n${logs.robotJava.content}\n\`\`\`\n\n`;
+    const content = logs.robotJava.content.slice(0, 10000);
+    message += `## Robot.java (${logs.robotJava.filename})\n\`\`\`java\n${content}\n\`\`\`\n\n`;
   }
 
   if (problemDescription) {
@@ -53,10 +46,67 @@ function buildUserMessage(logs: LogFiles, problemDescription: string): string {
   return message;
 }
 
+/**
+ * Try to repair common JSON issues from LLM responses
+ */
+function tryRepairJson(text: string): AnalysisResponse | null {
+  // Remove markdown code blocks if present
+  let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+
+  // Try to extract just the JSON object
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  cleaned = jsonMatch[0];
+
+  // Try parsing as-is first
+  try {
+    return JSON.parse(cleaned) as AnalysisResponse;
+  } catch {
+    // Continue with repairs
+  }
+
+  // Try to fix truncated JSON by closing arrays and objects
+  let repaired = cleaned;
+
+  // Count braces and brackets
+  const openBraces = (repaired.match(/\{/g) || []).length;
+  const closeBraces = (repaired.match(/\}/g) || []).length;
+  const openBrackets = (repaired.match(/\[/g) || []).length;
+  const closeBrackets = (repaired.match(/\]/g) || []).length;
+
+  // If we're in the middle of a string, try to close it
+  if (repaired.match(/"[^"]*$/)) {
+    repaired += '"';
+  }
+
+  // Add missing closing brackets/braces
+  for (let i = 0; i < openBrackets - closeBrackets; i++) {
+    repaired += ']';
+  }
+  for (let i = 0; i < openBraces - closeBraces; i++) {
+    repaired += '}';
+  }
+
+  // Remove trailing commas before ] or }
+  repaired = repaired.replace(/,\s*([\]}])/g, '$1');
+
+  try {
+    return JSON.parse(repaired) as AnalysisResponse;
+  } catch {
+    return null;
+  }
+}
+
 export async function analyzeRobotLogs(
   logs: LogFiles,
   problemDescription: string
 ): Promise<AnalysisResponse> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('API key not configured. Click the gear icon to add your Anthropic API key.');
+  }
+
   const userMessage = buildUserMessage(logs, problemDescription);
 
   const response = await fetch(API_URL, {
@@ -65,6 +115,7 @@ export async function analyzeRobotLogs(
       'Content-Type': 'application/json',
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
+      'x-api-key': apiKey,
     },
     body: JSON.stringify({
       model: MODEL,
@@ -85,15 +136,24 @@ export async function analyzeRobotLogs(
   const data = await response.json();
   const content = (data as { content: { text: string }[] }).content[0].text;
 
-  // Parse JSON response
-  try {
-    return JSON.parse(content) as AnalysisResponse;
-  } catch {
-    // Try to extract JSON from response if wrapped in markdown
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as AnalysisResponse;
-    }
-    throw new Error('Could not parse response as JSON');
+  // Try to parse JSON response
+  const parsed = tryRepairJson(content);
+
+  if (parsed) {
+    return parsed;
   }
+
+  // If we still can't parse, return a fallback response
+  return {
+    summary: 'Analysis completed but response format was invalid.',
+    needsRobotJava: false,
+    findings: [
+      {
+        severity: 'info',
+        title: 'Analysis Response',
+        description: content.slice(0, 500),
+        fix: 'Try running the analysis again with a simpler problem description.',
+      },
+    ],
+  };
 }
