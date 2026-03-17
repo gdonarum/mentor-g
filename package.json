@@ -1,0 +1,18 @@
+{
+  "name": "mentor-g",
+  "version": "1.0.0",
+  "description": "FRC Robot Log Analyzer powered by AI",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["frc", "robotics", "diagnostics", "wpilib"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}
