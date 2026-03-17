@@ -33,21 +33,6 @@ public void teleopPeriodic() {
     }
 }</pre>
       <p>Set <code>COMPETITION_MODE = true</code> before matches to disable all debug telemetry. This makes it easy to toggle debugging on/off without deleting code.</p>
-
-      <h5>Fix #3: Move PhotonVision.verifyVersion() Off Main Thread</h5>
-      <p>This call blocks while waiting for a network response and can stall your robot for seconds:</p>
-      <pre>// BAD - Blocks the main thread
-PhotonCamera camera = new PhotonCamera("cam");
-camera.verifyVersion(); // Can block for 2+ seconds!
-
-// GOOD - Run in a background thread or skip entirely
-new Thread(() -> {
-    try {
-        camera.verifyVersion();
-    } catch (Exception e) {
-        // Log but don't crash
-    }
-}).start();</pre>
     `,
   },
   {
