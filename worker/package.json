@@ -1,0 +1,16 @@
+{
+  "name": "mentor-g-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create mentor-g-feedback",
+    "db:init": "wrangler d1 execute mentor-g-feedback --file=schema.sql",
+    "db:query": "wrangler d1 execute mentor-g-feedback --command"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "wrangler": "^3.22.0"
+  }
+}

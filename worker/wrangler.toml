@@ -1,0 +1,9 @@
+name = "mentor-g-api"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+# D1 Database for logging analyses
+[[d1_databases]]
+binding = "MENTOR_G_DB"
+database_name = "mentor-g-feedback"
+database_id = "f5fea926-8d90-462a-b1bb-835f7452dd2e"  # Replace after creating database

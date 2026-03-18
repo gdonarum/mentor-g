@@ -1,7 +1,7 @@
 import type { AnalysisResponse, LogFiles } from '../types/analysis';
-import { getApiKey } from './config';
+import { getApiKey, useWorkerMode, WORKER_URL } from './config';
 
-const API_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-sonnet-4-20250514';
 const MAX_TOKENS = 2048;
 
@@ -117,28 +117,41 @@ export async function analyzeRobotLogs(
   logs: LogFiles,
   problemDescription: string
 ): Promise<AnalysisResponse> {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error('API key not configured. Click the gear icon to add your Anthropic API key.');
-  }
-
   const userMessage = buildUserMessage(logs, problemDescription);
-
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-      'x-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
+  const requestBody = JSON.stringify({
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: userMessage }],
   });
+
+  let response: Response;
+
+  if (useWorkerMode()) {
+    // Use Cloudflare Worker (hides API key, logs analyses)
+    response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: requestBody,
+    });
+  } else {
+    // Direct API mode (requires user's API key)
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      throw new Error('API key not configured. Click the gear icon to add your Anthropic API key.');
+    }
+
+    response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'x-api-key': apiKey,
+      },
+      body: requestBody,
+    });
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

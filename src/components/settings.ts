@@ -1,4 +1,4 @@
-import { getApiKey, setApiKey, hasApiKey } from '../api/config';
+import { getApiKey, setApiKey, hasApiKey, useWorkerMode } from '../api/config';
 
 export function createSettingsButton(): string {
   return `
@@ -40,8 +40,18 @@ export function createSettingsModal(): string {
 }
 
 export function initSettings(): void {
-  const settingsBtn = document.getElementById('settings-btn')!;
-  const settingsModal = document.getElementById('settings-modal')!;
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsModal = document.getElementById('settings-modal');
+
+  // Hide settings in worker mode (API key is handled server-side)
+  if (useWorkerMode()) {
+    if (settingsBtn) settingsBtn.style.display = 'none';
+    if (settingsModal) settingsModal.style.display = 'none';
+    return;
+  }
+
+  if (!settingsBtn || !settingsModal) return;
+
   const settingsClose = document.getElementById('settings-close')!;
   const apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement;
   const toggleApiKey = document.getElementById('toggle-api-key')!;
@@ -92,16 +102,16 @@ export function initSettings(): void {
     if (hasKey) {
       apiKeyStatus.textContent = '✓ API key configured';
       apiKeyStatus.className = 'api-key-status success';
-      settingsBtn.classList.add('configured');
+      settingsBtn!.classList.add('configured');
     } else {
       apiKeyStatus.textContent = '';
       apiKeyStatus.className = 'api-key-status';
-      settingsBtn.classList.remove('configured');
+      settingsBtn!.classList.remove('configured');
     }
   }
 
   // Update button indicator on load
   if (hasApiKey()) {
-    settingsBtn.classList.add('configured');
+    settingsBtn!.classList.add('configured');
   }
 }
