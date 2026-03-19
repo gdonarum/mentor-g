@@ -39,7 +39,6 @@ export function parseDslog(file: File): Promise<ParsedLog> {
 
     reader.onload = (e) => {
       const buffer = e.target?.result as ArrayBuffer;
-      const view = new DataView(buffer);
       const bytes = new Uint8Array(buffer);
 
       if (bytes.length < 4) {
@@ -100,9 +99,8 @@ export function parseDslog(file: File): Promise<ParsedLog> {
           const tripTime = bytes[offset]; // ms
           const lostPackets = bytes[offset + 1];
 
-          // Voltage is stored as value / 256 * 12 (approximate)
-          const voltageRaw = view.getUint16(offset + 2, false);
-          const voltage = (voltageRaw / 256) * 0.00381; // Conversion factor
+          // Voltage: high byte = integer volts, low byte = fractional volts (256ths)
+          const voltage = bytes[offset + 2] + bytes[offset + 3] / 256.0;
 
           const rioCpu = bytes[offset + 4] / 2; // 0-100%
           const status = bytes[offset + 5];
