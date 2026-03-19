@@ -762,3 +762,78 @@ h1, h2, h3, h4 {
     padding: 1rem;
   }
 }
+
+/* Feedback Form */
+.feedback-section {
+  max-width: 600px;
+}
+
+.feedback-section h3 {
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.feedback-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.feedback-form label {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.feedback-form select,
+.feedback-form input[type="text"],
+.feedback-form textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.feedback-form select:focus,
+.feedback-form input[type="text"]:focus,
+.feedback-form textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.feedback-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.feedback-submit-btn {
+  align-self: flex-start;
+  padding: 0.875rem 2rem;
+  background: var(--primary);
+  color: white;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.feedback-submit-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.feedback-submit-btn:active {
+  transform: translateY(0);
+}

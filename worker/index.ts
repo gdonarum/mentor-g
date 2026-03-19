@@ -28,6 +28,12 @@ interface AnthropicRequest {
   messages: { role: string; content: string }[];
 }
 
+interface FeedbackRequest {
+  type: string;
+  name?: string;
+  message: string;
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -36,6 +42,8 @@ const CORS_HEADERS = {
 
 export default {
   async fetch(request: Request, env: Env, ctx: { waitUntil: (promise: Promise<unknown>) => void }): Promise<Response> {
+    const url = new URL(request.url);
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS_HEADERS });
@@ -45,6 +53,12 @@ export default {
       return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
     }
 
+    // Route: /feedback - Store user feedback
+    if (url.pathname === '/feedback') {
+      return handleFeedback(request, env, ctx);
+    }
+
+    // Default route: Proxy to Anthropic API
     try {
       const body = await request.json() as AnthropicRequest;
 
@@ -164,4 +178,45 @@ async function logAnalysis(env: Env, request: AnalysisRequest, response: string)
     summary,
     findingsCount
   ).run();
+}
+
+async function handleFeedback(
+  request: Request,
+  env: Env,
+  ctx: { waitUntil: (promise: Promise<unknown>) => void }
+): Promise<Response> {
+  try {
+    const body = await request.json() as FeedbackRequest;
+
+    if (!body.message || !body.type) {
+      return new Response(
+        JSON.stringify({ error: 'Message and type are required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } }
+      );
+    }
+
+    // Store feedback in background
+    ctx.waitUntil(
+      env.MENTOR_G_DB.prepare(`
+        INSERT INTO feedback (timestamp, type, name, message)
+        VALUES (?, ?, ?, ?)
+      `).bind(
+        new Date().toISOString(),
+        body.type,
+        body.name || null,
+        body.message.slice(0, 2000)
+      ).run()
+    );
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } }
+    );
+  } catch (error) {
+    console.error('Feedback error:', error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to submit feedback' }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } }
+    );
+  }
 }

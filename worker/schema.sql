@@ -21,3 +21,17 @@ CREATE INDEX IF NOT EXISTS idx_analyses_timestamp ON analyses(timestamp);
 
 -- Index for finding analyses with specific file types
 CREATE INDEX IF NOT EXISTS idx_analyses_files ON analyses(dslog_filename, dsevents_filename, java_filename);
+
+-- Feedback table for user suggestions and bug reports
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    type TEXT NOT NULL,
+    name TEXT,
+    message TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index for querying feedback by type
+CREATE INDEX IF NOT EXISTS idx_feedback_type ON feedback(type);
+CREATE INDEX IF NOT EXISTS idx_feedback_timestamp ON feedback(timestamp);

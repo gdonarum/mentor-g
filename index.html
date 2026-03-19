@@ -117,6 +117,7 @@
         <div class="tabs">
             <button class="tab-btn active" data-tab="analyze">Analyze Logs</button>
             <button class="tab-btn" data-tab="guide">Performance Guide</button>
+            <button class="tab-btn" data-tab="feedback">Feedback</button>
         </div>
 
         <!-- Analyze Logs Tab -->
@@ -200,6 +201,38 @@
                 <h3>FRC Robot Performance Guide</h3>
                 <p style="margin-bottom: 1.5rem; color: var(--text-muted);">Common issues and solutions to keep your robot running smoothly.</p>
                 <!-- Accordion items will be inserted here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Feedback Tab -->
+        <div id="feedback" class="tab-content">
+            <div class="feedback-section">
+                <h3>Send Feedback</h3>
+                <p style="margin-bottom: 1.5rem; color: var(--text-muted);">Have a suggestion, found a bug, or just want to say hi? We'd love to hear from you!</p>
+
+                <form id="feedback-form" class="feedback-form">
+                    <div class="form-group">
+                        <label for="feedback-type">Feedback Type</label>
+                        <select id="feedback-type" required>
+                            <option value="suggestion">App Suggestion</option>
+                            <option value="guide">Performance Guide Feedback</option>
+                            <option value="bug">Bug Report</option>
+                            <option value="hello">Just Saying Hi</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-name">Name / Team Number (optional)</label>
+                        <input type="text" id="feedback-name" placeholder="e.g., Team 254 or Jane Doe" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="feedback-message">Message</label>
+                        <textarea id="feedback-message" placeholder="Tell us what's on your mind..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="feedback-submit-btn">Send Feedback</button>
+                </form>
             </div>
         </div>
     </main>

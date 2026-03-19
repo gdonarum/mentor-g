@@ -5,6 +5,7 @@ import { setupUploadZone } from './components/upload';
 import { setupAccordion, createAccordion } from './components/accordion';
 import { renderResults, showError, hideError, hideResults } from './components/results';
 import { initSettings } from './components/settings';
+import { initFeedbackForm } from './components/feedback';
 import { performanceGuide } from './content/guide';
 import type { LogFiles } from './types/analysis';
 
@@ -131,6 +132,7 @@ function init(): void {
   initUploadZones();
   initGuide();
   initSettings();
+  initFeedbackForm();
 
   analyzeBtn.addEventListener('click', runAnalysis);
 }
