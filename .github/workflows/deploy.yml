@@ -26,6 +26,18 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Secret scanning
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
       - run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
