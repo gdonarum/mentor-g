@@ -1,4 +1,6 @@
 import './styles.css';
+
+declare const __COMMIT_SHA__: string;
 import { analyzeRobotLogs } from './api/anthropic';
 import { parseDslog, parseDsevents, parseJavaFile, type ParsedLog } from './parsers/logs';
 import { setupUploadZone } from './components/upload';
@@ -135,6 +137,9 @@ function init(): void {
   initFeedbackForm();
 
   analyzeBtn.addEventListener('click', runAnalysis);
+
+  const versionEl = document.getElementById('app-version');
+  if (versionEl) versionEl.textContent = `build: ${__COMMIT_SHA__}`;
 }
 
 // Wait for DOM

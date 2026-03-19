@@ -837,3 +837,15 @@ h1, h2, h3, h4 {
 .feedback-submit-btn:active {
   transform: translateY(0);
 }
+
+.app-footer {
+  text-align: center;
+  padding: 0.75rem;
+}
+
+.app-version {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-family: monospace;
+}
