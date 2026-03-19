@@ -2,8 +2,8 @@ import type { AnalysisResponse, LogFiles } from '../types/analysis';
 import { getApiKey, useWorkerMode, WORKER_URL } from './config';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-20250514';
-const MAX_TOKENS = 2048;
+const MODEL = 'claude-haiku-4-5-20251001';
+const MAX_TOKENS = 4096;
 
 const SYSTEM_PROMPT = `You are Mentor G, an FRC robot diagnostics expert. You ONLY help with FIRST Robotics Competition (FRC) robot issues.
 
