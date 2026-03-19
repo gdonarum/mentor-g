@@ -24,8 +24,8 @@ async function submitFeedback(data: FeedbackData): Promise<void> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error((error as { error?: string }).error || 'Failed to submit feedback');
+    const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    throw new Error((errorData as { error?: string }).error || `Failed to submit feedback (${response.status})`);
   }
 }
 
@@ -64,11 +64,12 @@ export function initFeedbackForm(): void {
         submitBtn.textContent = originalText;
       }, 2000);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       submitBtn.textContent = 'Failed - Try Again';
       setTimeout(() => {
         submitBtn.textContent = originalText;
       }, 3000);
-      console.error('Feedback submission failed:', error);
+      console.error('Feedback submission failed:', message);
     } finally {
       submitBtn.disabled = false;
     }
