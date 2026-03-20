@@ -31,7 +31,8 @@ interface DslogRecord {
 
 /**
  * Parse a Driver Station log file (.dslog)
- * Binary format: version header + records with telemetry data
+ * Binary format v4: 16-byte header + 47-byte records with telemetry data
+ * Reference: https://github.com/PChild/frc-data-scripts/blob/master/dsLog.py
  */
 export function parseDslog(file: File): Promise<ParsedLog> {
   return new Promise((resolve, reject) => {
@@ -39,9 +40,10 @@ export function parseDslog(file: File): Promise<ParsedLog> {
 
     reader.onload = (e) => {
       const buffer = e.target?.result as ArrayBuffer;
+      const view = new DataView(buffer);
       const bytes = new Uint8Array(buffer);
 
-      if (bytes.length < 4) {
+      if (bytes.length < 20) {
         resolve({
           filename: file.name,
           content: `[Invalid dslog file: too small (${bytes.length} bytes)]`,
@@ -50,22 +52,26 @@ export function parseDslog(file: File): Promise<ParsedLog> {
         return;
       }
 
-      // Parse header - version is first 3 bytes
-      const version = bytes[0];
+      // Parse header - version is 4-byte big-endian integer at offset 0
+      const version = view.getInt32(0, false); // big-endian
       let output = `# Driver Station Log Analysis\n`;
       output += `File: ${file.name}\n`;
       output += `Size: ${buffer.byteLength} bytes\n`;
       output += `Log Version: ${version}\n\n`;
 
-      // Version 4 is the current format
-      if (version !== 4) {
-        output += `Note: Expected version 4, got ${version}. Parsing may be incomplete.\n\n`;
+      // Version 4 is the current format (2024+)
+      // Version 3 was used in earlier years
+      if (version !== 4 && version !== 3) {
+        output += `Note: Expected version 3 or 4, got ${version}. Parsing may be incomplete.\n\n`;
       }
 
-      // Parse records - each record is 10 bytes starting at offset 3
-      const recordSize = 10;
-      const recordStart = 3;
-      const numRecords = Math.floor((buffer.byteLength - recordStart) / recordSize);
+      // Header is 16 bytes for v4
+      const headerSize = 16;
+      // Each record is 47 bytes in v4 (4-byte prefix + 10-byte data + 33-byte PDP/PDH)
+      const recordSize = 47;
+      const dataBlockOffset = 4; // Data block starts 4 bytes into each record
+
+      const numRecords = Math.floor((buffer.byteLength - headerSize) / recordSize);
 
       output += `Total Records: ${numRecords}\n`;
       output += `Duration: ~${(numRecords * 0.02).toFixed(1)} seconds\n\n`;
@@ -89,33 +95,47 @@ export function parseDslog(file: File): Promise<ParsedLog> {
       let watchdogCount = 0;
       let brownoutCount = 0;
       let prevBrownout = false;
+      let validRecordCount = 0;
 
       for (let i = 0; i < numRecords && i < 50000; i++) {
-        const offset = recordStart + i * recordSize;
+        const recordOffset = headerSize + i * recordSize;
+        const dataOffset = recordOffset + dataBlockOffset;
 
-        if (offset + recordSize > buffer.byteLength) break;
+        if (dataOffset + 10 > buffer.byteLength) break;
 
         try {
-          // Parse record fields (big-endian format)
-          const tripTime = bytes[offset]; // ms
-          const lostPackets = bytes[offset + 1];
+          // Parse data block fields (10 bytes, big-endian format)
+          // Byte 0: Trip time (divide by 2 for ms)
+          const tripTime = bytes[dataOffset] / 2;
+          // Byte 1: Packet loss (multiply by 4 for percentage)
+          const lostPackets = bytes[dataOffset + 1] * 4;
 
-          // Voltage: high byte = integer volts, low byte = fractional volts (256ths)
-          const voltage = bytes[offset + 2] + bytes[offset + 3] / 256.0;
+          // Bytes 2-3: Voltage as 16-bit big-endian, divide by 256
+          const voltageRaw = view.getUint16(dataOffset + 2, false);
+          const voltage = voltageRaw / 256.0;
 
-          const rioCpu = bytes[offset + 4] / 2; // 0-100%
-          const status = bytes[offset + 5];
-          const canUsage = bytes[offset + 6] / 2; // 0-100%
+          // Byte 4: Rio CPU (half of byte value, then as percentage)
+          const rioCpu = (bytes[dataOffset + 4] / 2) * 0.5;
 
-          // Status byte bits
-          const watchdog = (status & 0x40) !== 0;
+          // Byte 5: Status bits (inverted)
+          const statusRaw = bytes[dataOffset + 5];
+          const status = ~statusRaw & 0xff;
 
+          // Byte 6: CAN usage (half of byte value, then as percentage)
+          const canUsage = (bytes[dataOffset + 6] / 2) * 0.5;
+
+          // Status bits (after inversion):
+          // Bit 1: Watchdog, Bit 0: Brownout
+          const watchdog = (status & 0x02) !== 0;
+          const brownoutFlag = (status & 0x01) !== 0;
+
+          // For brownout detection, use both flag and voltage threshold
           // Actual brownout = voltage below roboRIO cutoff (6.3V)
-          // Filter out invalid readings < 5V (indicates no telemetry, not real brownout)
-          const brownout = voltage >= 5 && voltage < 6.3;
+          const brownout = brownoutFlag || (voltage >= 5 && voltage < 6.3);
 
-          // Track statistics (filter out invalid readings < 5V which indicate no telemetry)
-          if (voltage >= 5 && voltage < 20) {
+          // Track statistics (filter out invalid readings)
+          if (voltage >= 5 && voltage <= 16) {
+            validRecordCount++;
             if (voltage < minVoltage) minVoltage = voltage;
             if (voltage > maxVoltage) maxVoltage = voltage;
             if (voltage < 7) lowVoltageCount++;
@@ -143,8 +163,9 @@ export function parseDslog(file: File): Promise<ParsedLog> {
 
       // Summary statistics
       output += `## Summary Statistics\n\n`;
+      output += `Valid Records: ${validRecordCount} / ${numRecords}\n`;
 
-      if (minVoltage < 999) {
+      if (minVoltage < 999 && minVoltage > 0) {
         output += `Voltage Range: ${minVoltage.toFixed(2)}V - ${maxVoltage.toFixed(2)}V\n`;
       }
 
@@ -188,7 +209,7 @@ export function parseDslog(file: File): Promise<ParsedLog> {
         });
       }
 
-      if (problemRecords.length === 0 && numRecords > 0) {
+      if (problemRecords.length === 0 && validRecordCount > 0) {
         output += `\n✅ No obvious problems detected in log data.\n`;
       }
 

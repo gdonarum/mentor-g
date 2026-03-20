@@ -24,3 +24,7 @@ build/
 
 # Wrangler local state
 .wrangler/
+
+# Test fixture log files (large binaries)
+test/fixtures/*.dslog
+test/fixtures/*.dsevents
