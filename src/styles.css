@@ -69,7 +69,7 @@ h1, h2, h3, h4 {
   font-weight: 600;
 }
 
-.coffee-btn {
+.donate-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -83,13 +83,13 @@ h1, h2, h3, h4 {
   box-shadow: 0 4px 15px rgba(245, 166, 35, 0.4);
 }
 
-.coffee-btn:hover {
+.donate-btn:hover {
   background: var(--gold-light);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(245, 166, 35, 0.5);
 }
 
-.coffee-btn svg {
+.donate-btn svg {
   width: 20px;
   height: 20px;
 }
