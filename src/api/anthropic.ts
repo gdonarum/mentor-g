@@ -65,6 +65,14 @@ CODE SNIPPET GUIDELINES:
 - Never use addPeriodic() in subsystems - it only exists on TimedRobot
 - Keep snippets minimal and focused on the specific fix
 
+YAGSL-SPECIFIC (CRITICAL - don't give harmful advice):
+- YAGSL runs its own high-frequency odometry thread internally
+- NEVER suggest rate-limiting swerveDrive.updateOdometry() - YAGSL handles this already
+- If user code calls updateOdometry() in periodic(), suggest REMOVING it entirely, not rate-limiting
+- Startup SwerveSubsystem spikes (80ms+) that drop to <1ms after connection are NORMAL - YAGSL's thread is taking over
+- Look for SUSTAINED high timing, not transient startup spikes that self-resolve
+- The "[JSON] CAN IDs greater than 40" warning comes from YAGSL's parser
+
 DSEVENTS DATA TO LOOK FOR (in priority order):
 1. CAN TIMEOUTS (HIGHEST PRIORITY - often root cause of other issues):
    - "[Spark Flex] IDs: X, timed out" or "[SparkMax] IDs: X, timed out"
@@ -74,17 +82,30 @@ DSEVENTS DATA TO LOOK FOR (in priority order):
 2. TIMING DATA from Tracer:
    - "robotPeriodic(): 0.303979s" - quote exact values
    - "SwerveSubsystem.periodic(): 0.060120s" - identifies slow subsystems
+   - "disabledInit(): 0.152129s" - expensive init running on mode change
+   - "LimelightSubsystem.periodic(): 0.023207s" - vision/network bottlenecks
+   - Look at ALL subsystem timings to find the actual bottleneck, not just swerve
 
 3. BROWNOUT STATUS:
    - "Input Voltage Brownouts: X" - use this EXACT number (often 0!)
    - If it says 0, report "No brownouts recorded"
 
-4. WARNINGS:
+4. PATHPLANNER ISSUES:
+   - "PathPlanner attempted to create a command 'X' that has not been registered" - CRITICAL missing NamedCommand
+   - Commands must be registered BEFORE loading paths that use them
+
+5. WARNINGS:
    - "[JSON] CAN IDs greater than 40" - link to any CAN timeouts on high IDs
    - "Loop time of 0.02s overrun" - confirms timing issues
    - "CommandScheduler loop overrun"
 
-5. Stack traces - identify the actual code location causing issues
+6. TIMING PROGRESSION (important!):
+   - Compare timing at different points: startup vs after connection vs during match
+   - Startup spikes that RESOLVE (e.g., 83ms → 0.4ms) are transient, not the real problem
+   - Focus on SUSTAINED high timing during actual operation
+   - If a subsystem is fast during teleop, don't recommend "fixing" it based on startup data
+
+7. Stack traces - identify the actual code location causing issues
 
 Limit to 3-5 findings. Be specific with code fixes.`;
 
