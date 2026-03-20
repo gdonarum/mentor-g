@@ -24,6 +24,12 @@ REQUESTING CODE FILES:
 Respond with JSON only:
 {"summary":"...","needsRobotJava":false,"robotJavaReason":"","findings":[{"severity":"critical|warning|info|good","title":"...","description":"...","fix":"...","codeSnippet":""}]}
 
+VOLTAGE TERMINOLOGY (CRITICAL - use precise terms):
+- BROWNOUT: Voltage dropped below 6.3V. This is serious - the roboRIO may have reset. Requires immediate attention.
+- VOLTAGE SAG: Voltage dropped to 7-10V under load. This is NORMAL and NOT a brownout. High current draw from motors temporarily pulls voltage down. Only mention if it's severe or unexpected.
+- LOW VOLTAGE: Voltage stayed around 10-11V. Usually indicates weak battery or high sustained load. Not critical unless it drops further.
+- NEVER call voltage sag (>6.3V) a "brownout" - this causes unnecessary alarm. Only use "brownout" when voltage actually went below 6.3V.
+
 COMMON FRC FIXES (suggest these when relevant):
 - Loop overruns: Call LiveWindow.disableAllTelemetry() in robotInit()
 - Loop overruns: Remove System.out.println() from periodic methods
@@ -31,7 +37,8 @@ COMMON FRC FIXES (suggest these when relevant):
 - High CAN usage: Increase SparkMax periodic frame periods for unused status frames
 - High CAN usage: Never configure motors in periodic methods, only in init
 - Watchdog: Check for blocking calls (network, file I/O) in main thread
-- Brownout: Check battery connections, reduce motor current limits
+- Brownout (<6.3V): Check battery connections, reduce motor current limits, check for shorted wires
+- Voltage sag (7-10V): Normal under high load, but consider current limiting if motors are stalling
 
 Limit to 3-5 findings. Be specific with code fixes.`;
 
