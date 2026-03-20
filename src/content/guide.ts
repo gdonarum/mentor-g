@@ -77,15 +77,20 @@ public void robotPeriodic() {
     `,
   },
   {
-    title: '3. Brownouts & Power Issues',
+    title: '3. Brownouts & Voltage Sag',
     content: `
-      <h5>What Causes Brownouts?</h5>
-      <p>Brownouts occur when battery voltage drops below safe levels (typically &lt;6.8V). The roboRIO will disable motors to protect itself. Common causes:</p>
+      <h5>Brownout vs Voltage Sag — Know the Difference!</h5>
+      <p><strong>Brownout (&lt;6.3V):</strong> The roboRIO shuts down motors to protect itself. This is serious — check your battery and wiring immediately.</p>
+      <p><strong>Voltage sag (7-10V):</strong> Normal under heavy load! When motors draw high current, voltage temporarily drops. This is NOT a brownout — it's just physics. Don't panic if you see 9V during hard acceleration.</p>
+      <p><strong>Low voltage (10-11V):</strong> Indicates a weak or partially discharged battery. Not critical, but swap batteries soon.</p>
+
+      <h5>What Causes Actual Brownouts?</h5>
+      <p>True brownouts (voltage below 6.3V) are caused by:</p>
       <ul>
-        <li><strong>Weak battery</strong> — Old batteries or poor connections</li>
-        <li><strong>High current draw</strong> — Too many motors at full power simultaneously</li>
-        <li><strong>Bad wiring</strong> — Loose connections, undersized wire gauge</li>
-        <li><strong>Stalled motors</strong> — Mechanisms that can't move but are still powered</li>
+        <li><strong>Dead/weak battery</strong> — Old batteries or poor connections</li>
+        <li><strong>Stalled motors</strong> — Mechanism jammed but still powered (massive current draw)</li>
+        <li><strong>Bad wiring</strong> — Loose connections, undersized wire gauge, corroded terminals</li>
+        <li><strong>Shorted wires</strong> — Direct short circuits in the power system</li>
       </ul>
 
       <h5>Preventing Brownouts</h5>
@@ -203,20 +208,27 @@ double captureTime = Timer.getFPGATimestamp() - latencySeconds;
 poseEstimator.addVisionMeasurement(visionPose, captureTime);</pre>
 
       <h5>Reduce Vision Processing Load</h5>
-      <pre>// Only process when you need vision
+      <p>Vision pose estimation doesn't need to run at 50Hz. Use a frame counter to run at 10Hz:</p>
+      <pre>private int frameCount = 0;
+
+@Override
 public void periodic() {
-    if (needsVisionUpdate()) {
-        var result = camera.getLatestResult();
-        if (result.hasTargets()) {
-            // Process targets
-        }
+    // Run vision at 10Hz (every 5th loop) instead of 50Hz
+    if (frameCount++ % 5 == 0) {
+        updateVisionPose();
     }
+
+    // Other periodic code runs every loop
+    updateOdometry();
 }
 
-// Switch pipelines when not actively using vision
-public void disableVision() {
-    limelightTable.getEntry("pipeline").setNumber(DRIVER_PIPELINE);
+private void updateVisionPose() {
+    var result = camera.getLatestResult();
+    if (result.hasTargets()) {
+        // Process targets and update pose
+    }
 }</pre>
+      <p>This reduces CPU load by 80% while still updating vision 10 times per second — plenty fast for pose estimation.</p>
     `,
   },
   {
@@ -269,11 +281,11 @@ public Command getAutoCommand() {
       <h5>What .dslog Files Tell You</h5>
       <p>Driver Station logs contain telemetry recorded at 50Hz:</p>
       <ul>
-        <li><strong>Voltage</strong> — Look for drops below 7V (brownout territory)</li>
+        <li><strong>Voltage</strong> — 9-12V under load is normal. Below 6.3V = brownout (serious). 7-9V = voltage sag (usually OK)</li>
         <li><strong>CPU %</strong> — Should stay below 80%; spikes indicate loop overruns</li>
         <li><strong>CAN Usage %</strong> — Should stay below 70%; high values mean bus congestion</li>
         <li><strong>Watchdog flags</strong> — Indicates main loop timing violations</li>
-        <li><strong>Brownout flags</strong> — Indicates voltage protection triggered</li>
+        <li><strong>Brownout flags</strong> — Only worry if voltage actually dropped below 6.3V</li>
       </ul>
 
       <h5>Common Patterns</h5>
@@ -281,8 +293,9 @@ public Command getAutoCommand() {
         <tr><td><strong>Pattern</strong></td><td><strong>Likely Cause</strong></td></tr>
         <tr><td>High CPU + Watchdog</td><td>Loop overruns — try LiveWindow.disableAllTelemetry()</td></tr>
         <tr><td>High CAN + Jerky motion</td><td>CAN bus congestion — reduce frame rates</td></tr>
-        <tr><td>Voltage drops + Brownout</td><td>Power issues — check battery/wiring</td></tr>
-        <tr><td>Spikes at mode change</td><td>Heavy initialization — move work to background threads</td></tr>
+        <tr><td>Voltage &lt;6.3V + Brownout</td><td>True brownout — check battery, wiring, stalled motors</td></tr>
+        <tr><td>Voltage 7-10V (no brownout)</td><td>Normal voltage sag — high current draw, not a problem</td></tr>
+        <tr><td>Spikes at mode change</td><td>Heavy initialization — load paths at startup, not in autoInit</td></tr>
       </table>
 
       <h5>.dsevents Files</h5>
