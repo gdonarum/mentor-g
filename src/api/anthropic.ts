@@ -34,19 +34,20 @@ COMMON FRC FIXES (suggest these when relevant):
 - Loop overruns: Call LiveWindow.disableAllTelemetry() in robotInit()
 - Loop overruns: Remove System.out.println() from periodic methods
 - Loop overruns: Wrap SmartDashboard calls in a Constants.COMPETITION_MODE guard
-- Loop overruns: Use addPeriodic() to run slow operations (vision, logging) at lower rates like 10Hz instead of 50Hz
-- Loop overruns: NEVER suggest raw Thread for FRC - use addPeriodic() or Notifier instead
+- Loop overruns: Use a frame counter to run slow operations less frequently (e.g., every 5th loop = 10Hz)
+- Loop overruns: NEVER suggest raw Thread or Notifier - use a simple frame counter instead
 - Loop overruns: Profile with Tracer to find the actual bottleneck before optimizing
 - High CAN usage: Increase SparkMax periodic frame periods for unused status frames
 - High CAN usage: Never configure motors in periodic methods, only in init
 - Watchdog: Check for blocking calls (network, file I/O) in main thread
 - Brownout (<6.3V): Check battery connections, reduce motor current limits, check for shorted wires
 - Voltage sag (7-10V): Normal under high load, but consider current limiting if motors are stalling
-- Vision latency: Run vision on a coprocessor (PhotonVision/Limelight) or use addPeriodic() at 10Hz
+- Vision latency: Run vision processing on a coprocessor (PhotonVision/Limelight does this automatically)
 
 CODE SNIPPET GUIDELINES:
-- For slow periodic operations, show addPeriodic(): addPeriodic(this::updateVision, 0.1) runs at 10Hz
-- Never show raw Thread code - it causes thread safety issues for students
+- For slow periodic operations, use a frame counter: if (frameCount++ % 5 == 0) { slowMethod(); }
+- Never show raw Thread or Notifier code - use frame counters for simplicity
+- Never use addPeriodic() in subsystems - it only exists on TimedRobot
 - Keep snippets minimal and focused on the specific fix
 
 Limit to 3-5 findings. Be specific with code fixes.`;
