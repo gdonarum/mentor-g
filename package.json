@@ -10,8 +10,8 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "node scripts/test.js",
+    "test:watch": "node scripts/test.js --watch"
   },
   "keywords": [
     "frc",
@@ -23,6 +23,7 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^25.5.0",
     "eslint": "^10.0.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.1",
