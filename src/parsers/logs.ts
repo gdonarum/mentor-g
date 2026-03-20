@@ -125,13 +125,13 @@ export function parseDslog(file: File): Promise<ParsedLog> {
           const canUsage = (bytes[dataOffset + 6] / 2) * 0.5;
 
           // Status bits (after inversion):
-          // Bit 1: Watchdog, Bit 0: Brownout
+          // Bit 1: Watchdog, Bit 0: Low voltage warning (NOT actual brownout)
           const watchdog = (status & 0x02) !== 0;
-          const brownoutFlag = (status & 0x01) !== 0;
 
-          // For brownout detection, use both flag and voltage threshold
+          // Brownout detection: ONLY use voltage threshold
+          // The status flag bit 0 is a "low voltage warning" that triggers ~7V, not actual brownout
           // Actual brownout = voltage below roboRIO cutoff (6.3V)
-          const brownout = brownoutFlag || (voltage >= 5 && voltage < 6.3);
+          const brownout = voltage >= 5 && voltage < 6.3;
 
           // Track statistics (filter out invalid readings)
           if (voltage >= 5 && voltage <= 16) {
