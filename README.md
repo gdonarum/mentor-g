@@ -18,6 +18,9 @@ npm run build
 
 # Preview production build
 npm run preview
+
+# Run tests
+npm test
 ```
 
 ## Features
@@ -51,11 +54,15 @@ worker/                  # Optional Cloudflare Worker backend
 ├── index.ts             # Worker proxy to Anthropic API
 ├── schema.sql           # D1 database schema
 └── wrangler.toml        # Worker configuration
+
+test/                    # Unit tests (Vitest)
+├── fixtures/            # Sample log files for testing
+└── parsers/logs.test.ts # Parser unit tests
 ```
 
 ## Tech Stack
 
-- Vite + TypeScript
+- Vite + TypeScript + Vitest
 - Anthropic Claude API (claude-haiku-4-5)
 - Cloudflare Workers + D1 (optional backend)
 - Single-page app (no framework)
