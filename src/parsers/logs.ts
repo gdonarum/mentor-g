@@ -111,10 +111,11 @@ export function parseDslog(file: File): Promise<ParsedLog> {
           const watchdog = (status & 0x40) !== 0;
 
           // Actual brownout = voltage below roboRIO cutoff (6.3V)
-          const brownout = voltage > 0 && voltage < 6.3;
+          // Filter out invalid readings < 5V (indicates no telemetry, not real brownout)
+          const brownout = voltage >= 5 && voltage < 6.3;
 
-          // Track statistics
-          if (voltage > 0 && voltage < 20) {
+          // Track statistics (filter out invalid readings < 5V which indicate no telemetry)
+          if (voltage >= 5 && voltage < 20) {
             if (voltage < minVoltage) minVoltage = voltage;
             if (voltage > maxVoltage) maxVoltage = voltage;
             if (voltage < 7) lowVoltageCount++;
