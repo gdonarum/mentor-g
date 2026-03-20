@@ -1,0 +1,30 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Robot Head -->
+  <ellipse cx="16" cy="18" rx="14" ry="12" fill="#4a7de8"/>
+  <ellipse cx="16" cy="18" rx="12" ry="10" fill="#6b9bef"/>
+
+  <!-- Hard Hat -->
+  <ellipse cx="16" cy="8" rx="12" ry="5" fill="#1a4fc4"/>
+  <path d="M4 8 Q16 0 28 8" fill="#1a4fc4"/>
+
+  <!-- Gold Star on Hat -->
+  <polygon points="16,3 17,6 20,6 17.5,8 18.5,11 16,9 13.5,11 14.5,8 12,6 15,6" fill="#f5a623"/>
+
+  <!-- Eyes -->
+  <ellipse cx="11" cy="17" rx="4" ry="4.5" fill="white"/>
+  <ellipse cx="21" cy="17" rx="4" ry="4.5" fill="white"/>
+  <circle cx="12" cy="17.5" r="2" fill="#1a1a2e"/>
+  <circle cx="22" cy="17.5" r="2" fill="#1a1a2e"/>
+
+  <!-- Glasses -->
+  <g stroke="#1a1a2e" stroke-width="1.5" fill="none">
+    <ellipse cx="11" cy="17" rx="5.5" ry="6"/>
+    <ellipse cx="21" cy="17" rx="5.5" ry="6"/>
+    <path d="M16.5 17 L15.5 17"/>
+    <path d="M5.5 15 L2 13"/>
+    <path d="M26.5 15 L30 13"/>
+  </g>
+
+  <!-- Smile -->
+  <path d="M11 24 Q16 28 21 24" stroke="#1a4fc4" stroke-width="2" fill="none" stroke-linecap="round"/>
+</svg>
