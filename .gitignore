@@ -21,3 +21,6 @@ build/
 
 # Claude Code internal files
 .claude/
+
+# Wrangler local state
+.wrangler/
