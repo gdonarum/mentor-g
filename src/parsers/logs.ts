@@ -108,8 +108,10 @@ export function parseDslog(file: File): Promise<ParsedLog> {
           const canUsage = bytes[offset + 6] / 2; // 0-100%
 
           // Status byte bits
-          const brownout = (status & 0x80) !== 0;
           const watchdog = (status & 0x40) !== 0;
+
+          // Actual brownout = voltage below roboRIO cutoff (6.3V)
+          const brownout = voltage > 0 && voltage < 6.3;
 
           // Track statistics
           if (voltage > 0 && voltage < 20) {
