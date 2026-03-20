@@ -88,6 +88,7 @@ export function parseDslog(file: File): Promise<ParsedLog> {
       let highCanCount = 0;
       let watchdogCount = 0;
       let brownoutCount = 0;
+      let prevBrownout = false;
 
       for (let i = 0; i < numRecords && i < 50000; i++) {
         const offset = recordStart + i * recordSize;
@@ -120,7 +121,8 @@ export function parseDslog(file: File): Promise<ParsedLog> {
           if (rioCpu > 90) highCpuCount++;
           if (canUsage > 80) highCanCount++;
           if (watchdog) watchdogCount++;
-          if (brownout) brownoutCount++;
+          if (brownout && !prevBrownout) brownoutCount++;
+          prevBrownout = brownout;
 
           records.push({
             tripTime,
