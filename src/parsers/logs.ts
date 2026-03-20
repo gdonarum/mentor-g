@@ -225,6 +225,11 @@ export function parseDslog(file: File): Promise<ParsedLog> {
   });
 }
 
+// Maximum text size we'll hand to JSON.parse. Keeps the parser from blocking
+// the main thread on a multi-megabyte file; the content is sliced to 8 000 chars
+// before sending to the API anyway, so anything beyond this is wasteful.
+const MAX_DSEVENTS_PARSE_SIZE = 1 * 1024 * 1024; // 1 MB
+
 /**
  * Parse a Driver Station events file (.dsevents)
  * These are JSON files with timestamped events
@@ -236,9 +241,16 @@ export function parseDsevents(file: File): Promise<ParsedLog> {
     reader.onload = (e) => {
       const text = e.target?.result as string;
 
-      // Try to parse as JSON
+      // Try to parse as JSON — but only if the text is small enough not to
+      // block the main thread. Anything larger is truncated first so that
+      // JSON.parse never receives an unbounded string from user input.
+      const parseableText =
+        text.length > MAX_DSEVENTS_PARSE_SIZE
+          ? text.slice(0, MAX_DSEVENTS_PARSE_SIZE)
+          : text;
+
       try {
-        const data = JSON.parse(text);
+        const data = JSON.parse(parseableText);
         let content = `# Driver Station Events\n`;
         content += `File: ${file.name}\n\n`;
 

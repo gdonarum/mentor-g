@@ -109,27 +109,42 @@ DSEVENTS DATA TO LOOK FOR (in priority order):
 
 Limit to 3-5 findings. Be specific with code fixes.`;
 
+/**
+ * Strip characters that have no place in a log file and could be used to
+ * smuggle instructions into the prompt (null bytes, most C0/C1 control chars).
+ * Preserves newlines (\n), carriage returns (\r), and tabs (\t) because those
+ * appear legitimately in log and source files.
+ */
+function sanitizeFileContent(content: string): string {
+  // eslint-disable-next-line no-control-regex
+  return content.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+}
+
 function buildUserMessage(logs: LogFiles, problemDescription: string): string {
   let message = '';
 
+  // Each file section is wrapped in XML-style tags so the model has an
+  // unambiguous boundary between "file data" and "instructions". This is a
+  // standard prompt-injection mitigation: injected text inside the tags is
+  // structurally less likely to be mistaken for a top-level instruction.
   if (logs.dslog) {
-    // Truncate long log content to avoid token limits
-    const content = logs.dslog.content.slice(0, 8000);
-    message += `## Driver Station Log (${logs.dslog.filename})\n${content}\n\n`;
+    const content = sanitizeFileContent(logs.dslog.content.slice(0, 8000));
+    message += `<file type="dslog" name="${logs.dslog.filename}">\n${content}\n</file>\n\n`;
   }
 
   if (logs.dsevents) {
-    const content = logs.dsevents.content.slice(0, 8000);
-    message += `## Driver Station Events (${logs.dsevents.filename})\n${content}\n\n`;
+    const content = sanitizeFileContent(logs.dsevents.content.slice(0, 8000));
+    message += `<file type="dsevents" name="${logs.dsevents.filename}">\n${content}\n</file>\n\n`;
   }
 
   if (logs.robotJava) {
-    const content = logs.robotJava.content.slice(0, 10000);
-    message += `## Robot.java (${logs.robotJava.filename})\n\`\`\`java\n${content}\n\`\`\`\n\n`;
+    const content = sanitizeFileContent(logs.robotJava.content.slice(0, 10000));
+    message += `<file type="java" name="${logs.robotJava.filename}">\n\`\`\`java\n${content}\n\`\`\`\n</file>\n\n`;
   }
 
   if (problemDescription) {
-    message += `## Problem Description\n${problemDescription}`;
+    // Problem description is user-typed text — sanitize it too.
+    message += `<problem>\n${sanitizeFileContent(problemDescription)}\n</problem>`;
   }
 
   return message;
