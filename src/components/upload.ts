@@ -7,6 +7,31 @@ export interface UploadZoneConfig {
   accept: string;
 }
 
+// 10 MB — large enough for any realistic FRC log, small enough to prevent browser DoS
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+/**
+ * Returns true if the file's extension matches one of the comma-separated
+ * patterns in the input's `accept` attribute (e.g. ".dslog,.dsevents").
+ * This replicates the browser's own `accept` filtering for drag-and-drop,
+ * which the browser does NOT enforce on its own.
+ */
+function isFileTypeAccepted(file: File, input: HTMLInputElement): boolean {
+  const accepted = input.accept
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (accepted.length === 0) return true; // no restriction configured
+
+  const name = file.name.toLowerCase();
+  return accepted.some((pattern) => {
+    if (pattern.startsWith('.')) return name.endsWith(pattern); // extension match
+    if (pattern.endsWith('/*')) return file.type.startsWith(pattern.slice(0, -1)); // MIME prefix
+    return file.type === pattern; // exact MIME
+  });
+}
+
 export function createUploadZone(config: UploadZoneConfig): HTMLElement {
   const zone = document.createElement('div');
   zone.className = 'upload-zone';
@@ -46,6 +71,11 @@ export function setupUploadZone(
     zone.classList.remove('dragover');
     const file = e.dataTransfer?.files[0];
     if (file) {
+      // Enforce the `accept` filter for drag-and-drop (browser skips this automatically)
+      if (!isFileTypeAccepted(file, input)) {
+        filenameEl.textContent = `Unsupported file type: ${file.name}`;
+        return;
+      }
       handleFile(file, zone, filenameEl, onFileSelected);
     }
   });
@@ -64,6 +94,12 @@ function handleFile(
   filenameEl: HTMLElement,
   onFileSelected: (file: File) => void
 ): void {
+  // Reject files large enough to freeze the browser tab before any parsing begins
+  if (file.size > MAX_FILE_SIZE) {
+    filenameEl.textContent = `File too large: ${file.name} (max 10 MB)`;
+    return;
+  }
+
   zone.classList.add('has-file');
   filenameEl.textContent = file.name;
   onFileSelected(file);
