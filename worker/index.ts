@@ -7,6 +7,7 @@
 
 interface Env {
   ANTHROPIC_API_KEY: string;
+  DISCORD_WEBHOOK_URL?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   MENTOR_G_DB: any;
 }
@@ -87,6 +88,22 @@ export default {
             console.error('Failed to log analysis:', err);
           })
         );
+
+        // Notify Discord if webhook is configured
+        if (env.DISCORD_WEBHOOK_URL) {
+          let findingsCount = 0;
+          try {
+            const parsed = JSON.parse(responseText);
+            findingsCount = parsed.findings?.length || 0;
+          } catch {
+            // Ignore parse errors
+          }
+          ctx.waitUntil(
+            notifyDiscordAnalysis(env.DISCORD_WEBHOOK_URL, analysisData, findingsCount).catch((err) => {
+              console.error('Discord notification failed:', err);
+            })
+          );
+        }
       }
 
       return new Response(JSON.stringify(responseData), {
@@ -180,6 +197,71 @@ async function logAnalysis(env: Env, request: AnalysisRequest, response: string)
   ).run();
 }
 
+async function notifyDiscordFeedback(webhookUrl: string, feedback: FeedbackRequest): Promise<void> {
+  const colorMap: Record<string, number> = {
+    bug: 0xff0000,
+    feature: 0x00ff00,
+    question: 0x0099ff,
+    other: 0x808080,
+  };
+
+  const embed = {
+    title: `Mentor G Feedback: ${feedback.type}`,
+    color: colorMap[feedback.type] ?? 0x0099ff,
+    fields: [
+      { name: 'Type', value: feedback.type, inline: true },
+      { name: 'From', value: feedback.name || 'Anonymous', inline: true },
+      { name: 'Message', value: feedback.message.slice(0, 1000) },
+    ],
+    timestamp: new Date().toISOString(),
+  };
+
+  await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embeds: [embed] }),
+  });
+}
+
+async function notifyDiscordAnalysis(
+  webhookUrl: string,
+  analysis: AnalysisRequest,
+  findingsCount: number
+): Promise<void> {
+  const files: string[] = [];
+  if (analysis.dslogFilename) files.push(analysis.dslogFilename);
+  if (analysis.dseventsFilename) files.push(analysis.dseventsFilename);
+  if (analysis.javaFilename) files.push(analysis.javaFilename);
+
+  const embed = {
+    title: 'New Analysis Request',
+    color: 0x5865f2,
+    fields: [
+      {
+        name: 'Problem',
+        value: analysis.problemDescription?.slice(0, 500) || 'No description provided',
+      },
+      {
+        name: 'Files',
+        value: files.length > 0 ? files.join(', ') : 'None',
+        inline: true,
+      },
+      {
+        name: 'Findings',
+        value: String(findingsCount),
+        inline: true,
+      },
+    ],
+    timestamp: new Date().toISOString(),
+  };
+
+  await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embeds: [embed] }),
+  });
+}
+
 async function handleFeedback(
   request: Request,
   env: Env,
@@ -207,6 +289,15 @@ async function handleFeedback(
         body.message.slice(0, 2000)
       ).run()
     );
+
+    // Notify Discord if webhook is configured
+    if (env.DISCORD_WEBHOOK_URL) {
+      ctx.waitUntil(
+        notifyDiscordFeedback(env.DISCORD_WEBHOOK_URL, body).catch((err) => {
+          console.error('Discord notification failed:', err);
+        })
+      );
+    }
 
     return new Response(
       JSON.stringify({ success: true }),
