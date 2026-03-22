@@ -7,7 +7,8 @@
 
 interface Env {
   ANTHROPIC_API_KEY: string;
-  DISCORD_WEBHOOK_URL?: string;
+  DISCORD_WEBHOOK_ANALYSIS?: string;
+  DISCORD_WEBHOOK_FEEDBACK?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   MENTOR_G_DB: any;
 }
@@ -90,7 +91,7 @@ export default {
         );
 
         // Notify Discord if webhook is configured
-        if (env.DISCORD_WEBHOOK_URL) {
+        if (env.DISCORD_WEBHOOK_ANALYSIS) {
           let findingsCount = 0;
           try {
             const parsed = JSON.parse(responseText);
@@ -99,7 +100,7 @@ export default {
             // Ignore parse errors
           }
           ctx.waitUntil(
-            notifyDiscordAnalysis(env.DISCORD_WEBHOOK_URL, analysisData, findingsCount).catch((err) => {
+            notifyDiscordAnalysis(env.DISCORD_WEBHOOK_ANALYSIS, analysisData, findingsCount).catch((err) => {
               console.error('Discord notification failed:', err);
             })
           );
@@ -126,28 +127,28 @@ export default {
 function extractAnalysisData(userMessage: string): AnalysisRequest {
   const data: AnalysisRequest = { problemDescription: '' };
 
-  // Extract problem description
-  const problemMatch = userMessage.match(/## Problem Description\n([\s\S]*?)(?=##|$)/);
+  // Extract problem description from <problem> tags
+  const problemMatch = userMessage.match(/<problem>\n?([\s\S]*?)\n?<\/problem>/);
   if (problemMatch) {
     data.problemDescription = problemMatch[1].trim().slice(0, 500);
   }
 
-  // Extract dslog info
-  const dslogMatch = userMessage.match(/## Driver Station Log \(([^)]+)\)\n([\s\S]*?)(?=##|$)/);
+  // Extract dslog info from <file type="dslog" name="..."> tags
+  const dslogMatch = userMessage.match(/<file type="dslog" name="([^"]+)">\n?([\s\S]*?)\n?<\/file>/);
   if (dslogMatch) {
     data.dslogFilename = dslogMatch[1];
     data.dslogSummary = dslogMatch[2].trim().slice(0, 1000);
   }
 
-  // Extract dsevents info
-  const dseventsMatch = userMessage.match(/## Driver Station Events \(([^)]+)\)\n([\s\S]*?)(?=##|$)/);
+  // Extract dsevents info from <file type="dsevents" name="..."> tags
+  const dseventsMatch = userMessage.match(/<file type="dsevents" name="([^"]+)">\n?([\s\S]*?)\n?<\/file>/);
   if (dseventsMatch) {
     data.dseventsFilename = dseventsMatch[1];
     data.dseventsExcerpt = dseventsMatch[2].trim().slice(0, 1000);
   }
 
-  // Extract Java file info
-  const javaMatch = userMessage.match(/## Robot\.java \(([^)]+)\)\n```java\n([\s\S]*?)```/);
+  // Extract Java file info from <file type="java" name="..."> tags
+  const javaMatch = userMessage.match(/<file type="java" name="([^"]+)">\n?```java\n?([\s\S]*?)```\n?<\/file>/);
   if (javaMatch) {
     data.javaFilename = javaMatch[1];
     data.javaExcerpt = javaMatch[2].trim().slice(0, 500);
@@ -291,9 +292,9 @@ async function handleFeedback(
     );
 
     // Notify Discord if webhook is configured
-    if (env.DISCORD_WEBHOOK_URL) {
+    if (env.DISCORD_WEBHOOK_FEEDBACK) {
       ctx.waitUntil(
-        notifyDiscordFeedback(env.DISCORD_WEBHOOK_URL, body).catch((err) => {
+        notifyDiscordFeedback(env.DISCORD_WEBHOOK_FEEDBACK, body).catch((err) => {
           console.error('Discord notification failed:', err);
         })
       );

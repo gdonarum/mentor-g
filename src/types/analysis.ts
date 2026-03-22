@@ -24,6 +24,10 @@ export interface LogFiles {
     filename: string;
     content: string;
   };
+  wpilog?: {
+    filename: string;
+    content: string;
+  };
   robotJava?: {
     filename: string;
     content: string;

@@ -7,8 +7,8 @@ export interface UploadZoneConfig {
   accept: string;
 }
 
-// 10 MB — large enough for any realistic FRC log, small enough to prevent browser DoS
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// 50 MB — wpilog files converted from hoot can be 20-30MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 /**
  * Returns true if the file's extension matches one of the comma-separated
@@ -96,7 +96,7 @@ function handleFile(
 ): void {
   // Reject files large enough to freeze the browser tab before any parsing begins
   if (file.size > MAX_FILE_SIZE) {
-    filenameEl.textContent = `File too large: ${file.name} (max 10 MB)`;
+    filenameEl.textContent = `File too large: ${file.name} (max 50 MB)`;
     return;
   }
 

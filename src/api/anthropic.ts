@@ -13,7 +13,8 @@ STRICT RULES:
   {"summary":"I can only help with FRC robot diagnostics. Please describe an FRC robot problem or upload log files.","needsRobotJava":false,"findings":[]}
 - Never generate content that is inappropriate for a high school robotics team environment
 - Stay focused on technical robot diagnostics only
-- If the problem description is vague or unclear, suggest uploading .dslog and .dsevents files for better diagnosis
+- If the problem description is vague or unclear, suggest uploading .dslog, .dsevents, or .wpilog files for better diagnosis
+- WPILOG files contain detailed telemetry from WPILib DataLog - look for motor outputs, sensor readings, subsystem timing data
 
 ANTI-HALLUCINATION (CRITICAL - STRICTLY ENFORCED):
 FORBIDDEN - Never do these:
@@ -135,6 +136,11 @@ function buildUserMessage(logs: LogFiles, problemDescription: string): string {
   if (logs.dsevents) {
     const content = sanitizeFileContent(logs.dsevents.content.slice(0, 8000));
     message += `<file type="dsevents" name="${logs.dsevents.filename}">\n${content}\n</file>\n\n`;
+  }
+
+  if (logs.wpilog) {
+    const content = sanitizeFileContent(logs.wpilog.content.slice(0, 10000));
+    message += `<file type="wpilog" name="${logs.wpilog.filename}">\n${content}\n</file>\n\n`;
   }
 
   if (logs.robotJava) {

@@ -2,7 +2,7 @@ import './styles.css';
 
 declare const __COMMIT_SHA__: string;
 import { analyzeRobotLogs } from './api/anthropic';
-import { parseDslog, parseDsevents, parseJavaFile, type ParsedLog } from './parsers/logs';
+import { parseDslog, parseDsevents, parseWpilog, parseJavaFile, type ParsedLog } from './parsers/logs';
 import { setupUploadZone } from './components/upload';
 import { setupAccordion, createAccordion } from './components/accordion';
 import { renderResults, showError, hideError, hideResults } from './components/results';
@@ -14,6 +14,7 @@ import type { LogFiles } from './types/analysis';
 // State
 let dslogFile: ParsedLog | null = null;
 let dseventsFile: ParsedLog | null = null;
+let wpilogFile: ParsedLog | null = null;
 let robotJavaFile: ParsedLog | null = null;
 
 // DOM Elements
@@ -43,6 +44,7 @@ function initTabs(): void {
 function initUploadZones(): void {
   const dslogZone = document.getElementById('dslog-zone')!;
   const dseventsZone = document.getElementById('dsevents-zone')!;
+  const wpilogZone = document.getElementById('wpilog-zone')!;
 
   setupUploadZone(dslogZone, async (file) => {
     dslogFile = await parseDslog(file);
@@ -50,6 +52,10 @@ function initUploadZones(): void {
 
   setupUploadZone(dseventsZone, async (file) => {
     dseventsFile = await parseDsevents(file);
+  });
+
+  setupUploadZone(wpilogZone, async (file) => {
+    wpilogFile = await parseWpilog(file);
   });
 
   // Robot.java upload handling
@@ -89,6 +95,13 @@ function buildLogFiles(): LogFiles {
     };
   }
 
+  if (wpilogFile) {
+    logs.wpilog = {
+      filename: wpilogFile.filename,
+      content: wpilogFile.content,
+    };
+  }
+
   if (robotJavaFile) {
     logs.robotJava = {
       filename: robotJavaFile.filename,
@@ -104,7 +117,7 @@ async function runAnalysis(): Promise<void> {
   const problem = problemText.value.trim();
   const logs = buildLogFiles();
 
-  if (!problem && !logs.dslog && !logs.dsevents) {
+  if (!problem && !logs.dslog && !logs.dsevents && !logs.wpilog) {
     showError(analyzeTab, 'Please describe the problem or upload at least one log file.');
     return;
   }
