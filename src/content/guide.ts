@@ -1,3 +1,9 @@
+/**
+ * Mentor G - Performance Guide Content
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import type { AccordionSection } from '../components/accordion';
 
 export const performanceGuide: AccordionSection[] = [

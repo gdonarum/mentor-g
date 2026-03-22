@@ -1,3 +1,9 @@
+/**
+ * Mentor G - File Upload Component
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import { uploadIconSvg } from './mascot';
 
 export interface UploadZoneConfig {

@@ -1,3 +1,9 @@
+/**
+ * Mentor G - Claude API Integration
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import type { AnalysisResponse, LogFiles } from '../types/analysis';
 import { getApiKey, useWorkerMode, WORKER_URL } from './config';
 

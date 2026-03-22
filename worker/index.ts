@@ -1,5 +1,8 @@
 /**
  * Mentor G - Cloudflare Worker
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ *
  * Proxies requests to Anthropic API while:
  * 1. Hiding the API key from clients
  * 2. Automatically logging all analyses for feedback

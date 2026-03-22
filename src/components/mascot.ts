@@ -1,5 +1,8 @@
 /**
- * Mentor G mascot SVG
+ * Mentor G - Mascot SVG Assets
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ *
  * A friendly robot with glasses, blue hard hat with gold star, and circuit-pattern cheeks
  */
 

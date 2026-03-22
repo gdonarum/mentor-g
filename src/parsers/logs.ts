@@ -1,5 +1,9 @@
 /**
- * Log file parsers for FRC robot logs
+ * Mentor G - Log File Parsers
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ *
+ * Parsers for FRC robot log files (dslog, dsevents, wpilog)
  */
 
 export interface ParsedLog {

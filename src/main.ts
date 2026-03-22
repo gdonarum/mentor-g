@@ -1,3 +1,9 @@
+/**
+ * Mentor G - FRC Robot Diagnostics Application
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import './styles.css';
 
 declare const __COMMIT_SHA__: string;

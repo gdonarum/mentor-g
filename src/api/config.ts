@@ -1,3 +1,9 @@
+/**
+ * Mentor G - API Configuration
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 const API_KEY_STORAGE_KEY = 'mentor-g-api-key';
 
 // Set this to your Cloudflare Worker URL for production

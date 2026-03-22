@@ -1,3 +1,9 @@
+/**
+ * Mentor G - Feedback Form Component
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import { WORKER_URL } from '../api/config';
 
 interface FeedbackData {
