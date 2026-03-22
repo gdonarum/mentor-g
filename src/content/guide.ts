@@ -70,10 +70,11 @@ export const performanceGuide: AccordionSection[] = [
 @Override
 public void robotInit() {
     DataLogManager.start();
-    // Optionally log NetworkTables data too
-    DataLogManager.logNetworkTables(true);
+    // Optionally log specific NetworkTables entries
+    DataLogManager.logNetworkTables(false); // Don't log everything!
 }</pre>
       <p><strong>Note:</strong> DataLogManager is <strong>not</strong> enabled by default — you must add the code above. This is the opposite of Phoenix 6 SignalLogger, which auto-logs to .hoot files unless you disable it.</p>
+      <p><strong>⚠️ Caution:</strong> Avoid <code>logNetworkTables(true)</code> — logging ALL NetworkTables can actually cause loop overruns, especially with PhotonVision or Limelight publishing camera data at high rates. Instead, log specific entries you need using <code>DataLog.getEntry()</code>.</p>
 
       <h5>💡 Pro Tips</h5>
       <ul>
@@ -194,6 +195,20 @@ sparkMax.enableVoltageCompensation(12.0);</pre>
         <li>Use battery beak or similar tool for quick health checks</li>
         <li>Rotate batteries during competition — don't run one battery all day</li>
       </ul>
+
+      <h5>PDH Current Monitoring</h5>
+      <p>The REV Power Distribution Hub (PDH) logs individual channel currents. When you see voltage sag, check PDH data to find which motor is drawing excessive current:</p>
+      <pre>// Log PDH currents to find the culprit
+PowerDistribution pdh = new PowerDistribution(1, ModuleType.kRev);
+
+// In periodic - check which channel is drawing the most
+for (int i = 0; i &lt; 24; i++) {
+    double current = pdh.getCurrent(i);
+    if (current &gt; 40) { // Suspiciously high
+        System.out.println("Channel " + i + ": " + current + "A");
+    }
+}</pre>
+      <p>Knowing whether the Intake (channel 5) or Climber (channel 12) is pulling 60A is the key to fixing your current limits.</p>
     `,
   },
   {
@@ -229,6 +244,7 @@ public DriveSubsystem() {
     motor.setIdleMode(IdleMode.kBrake);
     motor.burnFlash(); // Persist settings
 }</pre>
+      <p><strong>⚠️ burnFlash() Warning:</strong> SparkMax controllers have a limited flash write cycle (~10,000 writes). Only call <code>burnFlash()</code> in initialization code — <strong>never</strong> in a periodic method or loop. Accidentally leaving it in a loop during testing can permanently damage the controller's flash memory.</p>
 
       <h5>Phoenix 6 SignalLogger (Optional)</h5>
       <p>CTRE Phoenix 6 devices auto-log telemetry to <code>.hoot</code> files on the roboRIO. This is useful for post-match analysis but consumes CAN bandwidth. Disable it during competition if you need every bit of bandwidth:</p>
