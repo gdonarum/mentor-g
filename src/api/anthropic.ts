@@ -163,11 +163,12 @@ function tryRepairJson(text: string): AnalysisResponse | null {
   // Remove markdown code blocks if present
   let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
 
-  // Try to extract just the JSON object
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return null;
+  // Try to extract just the JSON object using indexOf (avoids regex backtracking)
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return null;
 
-  cleaned = jsonMatch[0];
+  cleaned = cleaned.slice(firstBrace, lastBrace + 1);
 
   // Try parsing as-is first
   try {
@@ -185,8 +186,9 @@ function tryRepairJson(text: string): AnalysisResponse | null {
   const openBrackets = (repaired.match(/\[/g) || []).length;
   const closeBrackets = (repaired.match(/\]/g) || []).length;
 
-  // If we're in the middle of a string, try to close it
-  if (repaired.match(/"[^"]*$/)) {
+  // If we're in the middle of a string (odd number of quotes), try to close it
+  const quoteCount = (repaired.match(/"/g) || []).length;
+  if (quoteCount % 2 === 1) {
     repaired += '"';
   }
 
