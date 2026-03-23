@@ -1,5 +1,9 @@
 /**
- * Log file parsers for FRC robot logs
+ * Mentor G - Log File Parsers
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ *
+ * Parsers for FRC robot log files (dslog, dsevents, wpilog)
  */
 
 export interface ParsedLog {
@@ -313,6 +317,343 @@ export function parseDsevents(file: File): Promise<ParsedLog> {
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsText(file);
   });
+}
+
+/**
+ * WPILOG entry definition from control records
+ */
+interface WpilogEntry {
+  id: number;
+  name: string;
+  type: string;
+  metadata: string;
+}
+
+/**
+ * WPILOG data point
+ */
+interface WpilogDataPoint {
+  entryId: number;
+  timestamp: number; // microseconds
+  value: number | string | boolean | number[];
+}
+
+/**
+ * Parse a WPILib data log file (.wpilog)
+ * Binary format v1.0: https://github.com/wpilibsuite/allwpilib/blob/main/wpiutil/doc/datalog.adoc
+ */
+export function parseWpilog(file: File): Promise<ParsedLog> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const buffer = e.target?.result as ArrayBuffer;
+      const bytes = new Uint8Array(buffer);
+      const view = new DataView(buffer);
+
+      let output = `# WPILib Data Log Analysis\n`;
+      output += `File: ${file.name}\n`;
+      output += `Size: ${buffer.byteLength} bytes\n\n`;
+
+      // Validate magic header "WPILOG"
+      if (bytes.length < 12) {
+        resolve({
+          filename: file.name,
+          content: output + `[Invalid wpilog file: too small (${bytes.length} bytes)]`,
+          isBinary: true,
+        });
+        return;
+      }
+
+      const magic = String.fromCharCode(...bytes.slice(0, 6));
+      if (magic !== 'WPILOG') {
+        resolve({
+          filename: file.name,
+          content: output + `[Invalid wpilog file: bad magic header "${magic}"]`,
+          isBinary: true,
+        });
+        return;
+      }
+
+      // Version: 2 bytes (MSB=major, LSB=minor)
+      const versionMajor = bytes[6];
+      const versionMinor = bytes[7];
+      output += `Log Version: ${versionMajor}.${versionMinor}\n`;
+
+      // Extra header length (4 bytes, little-endian)
+      const extraHeaderLen = view.getUint32(8, true);
+      const headerSize = 12 + extraHeaderLen;
+
+      if (extraHeaderLen > 0 && extraHeaderLen < 1000) {
+        const extraHeader = new TextDecoder().decode(bytes.slice(12, 12 + extraHeaderLen));
+        output += `Extra Header: ${extraHeader}\n`;
+      }
+
+      output += `\n`;
+
+      // Parse records
+      const entries: Map<number, WpilogEntry> = new Map();
+      const dataPoints: Map<number, WpilogDataPoint[]> = new Map();
+      let offset = headerSize;
+      let recordCount = 0;
+      const maxRecords = 100000; // Safety limit
+
+      while (offset < bytes.length && recordCount < maxRecords) {
+        if (offset + 1 > bytes.length) break;
+
+        // Length bitfield
+        const lenBits = bytes[offset];
+        offset++;
+
+        // Entry ID length: bits 0-1 (00=1, 01=2, 10=3, 11=4 bytes)
+        const entryIdLen = (lenBits & 0x03) + 1;
+        // Payload size length: bits 2-3
+        const payloadSizeLen = ((lenBits >> 2) & 0x03) + 1;
+        // Timestamp length: bits 4-6
+        const timestampLen = ((lenBits >> 4) & 0x07) + 1;
+
+        if (offset + entryIdLen + payloadSizeLen + timestampLen > bytes.length) break;
+
+        // Read entry ID (little-endian)
+        let entryId = 0;
+        for (let i = 0; i < entryIdLen; i++) {
+          entryId |= bytes[offset + i] << (8 * i);
+        }
+        offset += entryIdLen;
+
+        // Read payload size (little-endian)
+        let payloadSize = 0;
+        for (let i = 0; i < payloadSizeLen; i++) {
+          payloadSize |= bytes[offset + i] << (8 * i);
+        }
+        offset += payloadSizeLen;
+
+        // Read timestamp (little-endian, up to 8 bytes)
+        let timestamp = 0n;
+        for (let i = 0; i < timestampLen; i++) {
+          timestamp |= BigInt(bytes[offset + i]) << BigInt(8 * i);
+        }
+        offset += timestampLen;
+
+        if (offset + payloadSize > bytes.length) break;
+
+        const payload = bytes.slice(offset, offset + payloadSize);
+        offset += payloadSize;
+        recordCount++;
+
+        // Control record (entry ID 0)
+        if (entryId === 0 && payload.length > 0) {
+          const controlType = payload[0];
+
+          if (controlType === 0 && payload.length > 13) {
+            // Start record: defines a new entry
+            const newEntryId = view.getUint32(offset - payloadSize + 1, true);
+            let pos = 5;
+
+            // Name (4-byte length + UTF-8)
+            const nameLen = new DataView(payload.buffer, payload.byteOffset + pos, 4).getUint32(0, true);
+            pos += 4;
+            const name = new TextDecoder().decode(payload.slice(pos, pos + nameLen));
+            pos += nameLen;
+
+            // Type (4-byte length + UTF-8)
+            const typeLen = new DataView(payload.buffer, payload.byteOffset + pos, 4).getUint32(0, true);
+            pos += 4;
+            const type = new TextDecoder().decode(payload.slice(pos, pos + typeLen));
+            pos += typeLen;
+
+            // Metadata (4-byte length + UTF-8)
+            let metadata = '';
+            if (pos + 4 <= payload.length) {
+              const metaLen = new DataView(payload.buffer, payload.byteOffset + pos, 4).getUint32(0, true);
+              pos += 4;
+              if (pos + metaLen <= payload.length) {
+                metadata = new TextDecoder().decode(payload.slice(pos, pos + metaLen));
+              }
+            }
+
+            entries.set(newEntryId, { id: newEntryId, name, type, metadata });
+            dataPoints.set(newEntryId, []);
+          }
+        } else if (entryId !== 0) {
+          // Data record
+          const entry = entries.get(entryId);
+          if (entry) {
+            const points = dataPoints.get(entryId) || [];
+            const point: WpilogDataPoint = {
+              entryId,
+              timestamp: Number(timestamp),
+              value: parseWpilogValue(payload, entry.type, view, offset - payloadSize),
+            };
+            points.push(point);
+            dataPoints.set(entryId, points);
+          }
+        }
+      }
+
+      // Generate summary
+      output += `## Entries Found: ${entries.size}\n\n`;
+
+      // Group entries by category (based on name prefix)
+      const categories: Map<string, WpilogEntry[]> = new Map();
+      for (const entry of entries.values()) {
+        const category = entry.name.split('/')[0] || 'Other';
+        const list = categories.get(category) || [];
+        list.push(entry);
+        categories.set(category, list);
+      }
+
+      // Output entries by category
+      for (const [category, categoryEntries] of categories) {
+        output += `### ${category}\n`;
+        for (const entry of categoryEntries.slice(0, 20)) {
+          const points = dataPoints.get(entry.id) || [];
+          output += `- **${entry.name}** (${entry.type}): ${points.length} samples\n`;
+
+          // Show statistics for numeric types
+          if (points.length > 0 && (entry.type === 'double' || entry.type === 'float' || entry.type === 'int64')) {
+            const values = points.map(p => p.value as number).filter(v => !isNaN(v));
+            if (values.length > 0) {
+              const min = Math.min(...values);
+              const max = Math.max(...values);
+              const avg = values.reduce((a, b) => a + b, 0) / values.length;
+              output += `  - Range: ${min.toFixed(3)} to ${max.toFixed(3)}, Avg: ${avg.toFixed(3)}\n`;
+            }
+          }
+        }
+        if (categoryEntries.length > 20) {
+          output += `  ... and ${categoryEntries.length - 20} more entries\n`;
+        }
+        output += '\n';
+      }
+
+      // Calculate duration
+      let minTime = Infinity;
+      let maxTime = 0;
+      for (const points of dataPoints.values()) {
+        for (const p of points) {
+          if (p.timestamp < minTime) minTime = p.timestamp;
+          if (p.timestamp > maxTime) maxTime = p.timestamp;
+        }
+      }
+
+      if (minTime < Infinity) {
+        const durationSec = (maxTime - minTime) / 1_000_000;
+        output += `## Duration: ${durationSec.toFixed(2)} seconds\n`;
+        output += `Total Records: ${recordCount}\n`;
+      }
+
+      // Look for potential issues in the data
+      output += `\n## Potential Issues\n\n`;
+      let issuesFound = false;
+
+      for (const entry of entries.values()) {
+        const points = dataPoints.get(entry.id) || [];
+        const nameLower = entry.name.toLowerCase();
+
+        // Check for voltage issues
+        if (nameLower.includes('voltage') || nameLower.includes('battery')) {
+          const values = points.map(p => p.value as number).filter(v => !isNaN(v));
+          const lowVoltage = values.filter(v => v < 7 && v > 0);
+          if (lowVoltage.length > 0) {
+            output += `⚠️ **${entry.name}**: ${lowVoltage.length} low voltage readings (<7V)\n`;
+            issuesFound = true;
+          }
+        }
+
+        // Check for temperature issues
+        if (nameLower.includes('temp') || nameLower.includes('temperature')) {
+          const values = points.map(p => p.value as number).filter(v => !isNaN(v));
+          const highTemp = values.filter(v => v > 70);
+          if (highTemp.length > 0) {
+            output += `⚠️ **${entry.name}**: ${highTemp.length} high temperature readings (>70°C)\n`;
+            issuesFound = true;
+          }
+        }
+
+        // Check for error/fault signals
+        if (nameLower.includes('fault') || nameLower.includes('error')) {
+          const trueCount = points.filter(p => p.value === true || p.value === 1).length;
+          if (trueCount > 0) {
+            output += `🔴 **${entry.name}**: ${trueCount} fault/error occurrences\n`;
+            issuesFound = true;
+          }
+        }
+      }
+
+      if (!issuesFound) {
+        output += `✅ No obvious issues detected in logged data.\n`;
+      }
+
+      resolve({
+        filename: file.name,
+        content: output,
+        isBinary: true,
+      });
+    };
+
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
+ * Parse a WPILOG value based on its type
+ */
+function parseWpilogValue(
+  payload: Uint8Array,
+  type: string,
+  _view: DataView,
+  _offset: number
+): number | string | boolean | number[] {
+  const dataView = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+
+  switch (type) {
+    case 'boolean':
+      return payload[0] !== 0;
+    case 'int64':
+      // Read as two 32-bit values for compatibility
+      if (payload.length >= 8) {
+        const low = dataView.getUint32(0, true);
+        const high = dataView.getInt32(4, true);
+        return high * 0x100000000 + low;
+      }
+      return 0;
+    case 'float':
+      return payload.length >= 4 ? dataView.getFloat32(0, true) : 0;
+    case 'double':
+      return payload.length >= 8 ? dataView.getFloat64(0, true) : 0;
+    case 'string':
+      return new TextDecoder().decode(payload);
+    case 'double[]': {
+      const arr: number[] = [];
+      for (let i = 0; i + 8 <= payload.length; i += 8) {
+        arr.push(dataView.getFloat64(i, true));
+      }
+      return arr;
+    }
+    case 'float[]': {
+      const arr: number[] = [];
+      for (let i = 0; i + 4 <= payload.length; i += 4) {
+        arr.push(dataView.getFloat32(i, true));
+      }
+      return arr;
+    }
+    case 'int64[]': {
+      const arr: number[] = [];
+      for (let i = 0; i + 8 <= payload.length; i += 8) {
+        const low = dataView.getUint32(i, true);
+        const high = dataView.getInt32(i + 4, true);
+        arr.push(high * 0x100000000 + low);
+      }
+      return arr;
+    }
+    default:
+      // Return raw hex for unknown types
+      return Array.from(payload.slice(0, 32))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join(' ');
+  }
 }
 
 /**

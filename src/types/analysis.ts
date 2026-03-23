@@ -1,3 +1,9 @@
+/**
+ * Mentor G - Type Definitions
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 export type Severity = 'critical' | 'warning' | 'info' | 'good';
 
 export interface Finding {
@@ -21,6 +27,10 @@ export interface LogFiles {
     content: string;
   };
   dsevents?: {
+    filename: string;
+    content: string;
+  };
+  wpilog?: {
     filename: string;
     content: string;
   };

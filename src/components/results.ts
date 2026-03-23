@@ -1,3 +1,9 @@
+/**
+ * Mentor G - Results Display Component
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import type { AnalysisResponse, Finding } from '../types/analysis';
 import { mascotSmallSvg } from './mascot';
 

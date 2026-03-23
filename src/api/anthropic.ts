@@ -1,3 +1,9 @@
+/**
+ * Mentor G - Claude API Integration
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import type { AnalysisResponse, LogFiles } from '../types/analysis';
 import { getApiKey, useWorkerMode, WORKER_URL } from './config';
 
@@ -13,7 +19,8 @@ STRICT RULES:
   {"summary":"I can only help with FRC robot diagnostics. Please describe an FRC robot problem or upload log files.","needsRobotJava":false,"findings":[]}
 - Never generate content that is inappropriate for a high school robotics team environment
 - Stay focused on technical robot diagnostics only
-- If the problem description is vague or unclear, suggest uploading .dslog and .dsevents files for better diagnosis
+- If the problem description is vague or unclear, suggest uploading .dslog, .dsevents, or .wpilog files for better diagnosis
+- WPILOG files contain detailed telemetry from WPILib DataLog - look for motor outputs, sensor readings, subsystem timing data
 
 ANTI-HALLUCINATION (CRITICAL - STRICTLY ENFORCED):
 FORBIDDEN - Never do these:
@@ -137,6 +144,11 @@ function buildUserMessage(logs: LogFiles, problemDescription: string): string {
     message += `<file type="dsevents" name="${logs.dsevents.filename}">\n${content}\n</file>\n\n`;
   }
 
+  if (logs.wpilog) {
+    const content = sanitizeFileContent(logs.wpilog.content.slice(0, 10000));
+    message += `<file type="wpilog" name="${logs.wpilog.filename}">\n${content}\n</file>\n\n`;
+  }
+
   if (logs.robotJava) {
     const content = sanitizeFileContent(logs.robotJava.content.slice(0, 10000));
     message += `<file type="java" name="${logs.robotJava.filename}">\n\`\`\`java\n${content}\n\`\`\`\n</file>\n\n`;
@@ -157,11 +169,12 @@ function tryRepairJson(text: string): AnalysisResponse | null {
   // Remove markdown code blocks if present
   let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
 
-  // Try to extract just the JSON object
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return null;
+  // Try to extract just the JSON object using indexOf (avoids regex backtracking)
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return null;
 
-  cleaned = jsonMatch[0];
+  cleaned = cleaned.slice(firstBrace, lastBrace + 1);
 
   // Try parsing as-is first
   try {
@@ -179,8 +192,9 @@ function tryRepairJson(text: string): AnalysisResponse | null {
   const openBrackets = (repaired.match(/\[/g) || []).length;
   const closeBrackets = (repaired.match(/\]/g) || []).length;
 
-  // If we're in the middle of a string, try to close it
-  if (repaired.match(/"[^"]*$/)) {
+  // If we're in the middle of a string (odd number of quotes), try to close it
+  const quoteCount = (repaired.match(/"/g) || []).length;
+  if (quoteCount % 2 === 1) {
     repaired += '"';
   }
 

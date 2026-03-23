@@ -1,8 +1,92 @@
+/**
+ * Mentor G - Performance Guide Content
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import type { AccordionSection } from '../components/accordion';
 
 export const performanceGuide: AccordionSection[] = [
   {
-    title: '1. Loop Overruns — The #1 Issue',
+    title: '1. Understanding Your Log Files',
+    content: `
+      <p>FRC robots generate several types of log files that capture different aspects of robot operation. Understanding what each log contains and how to collect them is the first step to effective debugging.</p>
+
+      <h5>📁 .dslog — Driver Station Logs</h5>
+      <p>Binary telemetry files recorded by the Driver Station at 50Hz. These are your primary source for robot health metrics.</p>
+      <p><strong>What they contain:</strong></p>
+      <ul>
+        <li><strong>Battery voltage</strong> — Track brownouts, voltage sag, and battery health</li>
+        <li><strong>roboRIO CPU usage</strong> — Identify loop overruns and heavy computation</li>
+        <li><strong>CAN bus utilization</strong> — Detect bus congestion from too many devices</li>
+        <li><strong>Packet loss & trip time</strong> — Network connection quality</li>
+        <li><strong>Watchdog & brownout flags</strong> — Critical timing violations</li>
+        <li><strong>Robot mode</strong> — Disabled, Auto, Teleop timestamps</li>
+      </ul>
+      <p><strong>How to collect:</strong></p>
+      <ol>
+        <li>Open the Driver Station</li>
+        <li>Click the <strong>gear icon</strong> (⚙️) → <strong>View Log File</strong></li>
+        <li>Or navigate to: <code>C:\\Users\\Public\\Documents\\FRC\\Log Files</code></li>
+        <li>Files are named by date/time: <code>2024_03_15 14_30_00.dslog</code></li>
+      </ol>
+
+      <h5>📁 .dsevents — Driver Station Events</h5>
+      <p>JSON-formatted event logs with timestamped messages from the robot and Driver Station.</p>
+      <p><strong>What they contain:</strong></p>
+      <ul>
+        <li><strong>Console output</strong> — System.out.println() messages from robot code</li>
+        <li><strong>Error messages</strong> — Stack traces, exceptions, CAN timeouts</li>
+        <li><strong>FMS messages</strong> — Field connection status, match info</li>
+        <li><strong>Motor controller faults</strong> — SparkMax/TalonFX errors</li>
+        <li><strong>Tracer timing data</strong> — Subsystem performance measurements</li>
+        <li><strong>Warnings</strong> — Loop overruns, missing commands, configuration issues</li>
+      </ul>
+      <p><strong>How to collect:</strong></p>
+      <ol>
+        <li>Located in the same folder as .dslog files</li>
+        <li>Matching timestamp: <code>2024_03_15 14_30_00.dsevents</code></li>
+        <li>Upload both files together for best analysis</li>
+      </ol>
+
+      <h5>📁 .wpilog — WPILib Data Logs</h5>
+      <p>Binary telemetry files recorded by your robot code using WPILib's DataLog system. These contain custom data you choose to log.</p>
+      <p><strong>What they contain:</strong></p>
+      <ul>
+        <li><strong>Motor outputs</strong> — Commanded voltages, velocities, positions</li>
+        <li><strong>Sensor readings</strong> — Encoders, gyros, limit switches</li>
+        <li><strong>Subsystem state</strong> — Current commands, state machines</li>
+        <li><strong>Pose estimation</strong> — Robot position, vision updates</li>
+        <li><strong>Custom telemetry</strong> — Anything you log with DataLog API</li>
+      </ul>
+      <p><strong>How to collect:</strong></p>
+      <ol>
+        <li>Enable DataLog in your robot code (typically in Robot.java or Constants)</li>
+        <li>Files are saved to the roboRIO: <code>/home/lvuser/logs/</code></li>
+        <li>Use the roboRIO web dashboard or <code>scp</code> to download</li>
+        <li>Or use the WPILib "RoboRIO Data Log Download" tool</li>
+      </ol>
+      <pre>// Enable DataLog in Robot.java
+@Override
+public void robotInit() {
+    DataLogManager.start();
+    // Optionally log specific NetworkTables entries
+    DataLogManager.logNetworkTables(false); // Don't log everything!
+}</pre>
+      <p><strong>Note:</strong> DataLogManager is <strong>not</strong> enabled by default — you must add the code above. This is the opposite of Phoenix 6 SignalLogger, which auto-logs to .hoot files unless you disable it.</p>
+      <p><strong>⚠️ Caution:</strong> Avoid <code>logNetworkTables(true)</code> — logging ALL NetworkTables can actually cause loop overruns, especially with PhotonVision or Limelight publishing camera data at high rates. Instead, log specific entries you need using <code>DataLog.getEntry()</code>.</p>
+
+      <h5>💡 Pro Tips</h5>
+      <ul>
+        <li>Always upload <strong>both .dslog AND .dsevents</strong> — they complement each other</li>
+        <li>WPILOG files from Phoenix devices (CTRE) are in <code>.hoot</code> format — convert to .wpilog using <strong>Tuner X Log Extractor</strong> first</li>
+        <li>Keep logs from problematic matches — they're invaluable for post-match debugging</li>
+        <li>Use descriptive match names in your folder structure for easy retrieval</li>
+      </ul>
+    `,
+  },
+  {
+    title: '2. Loop Overruns — The #1 Issue',
     content: `
       <h5>What Are Loop Overruns?</h5>
       <p>The robot's main loop runs at 50Hz (every 20ms). If your code takes longer than 20ms, you get a "loop overrun" — the robot becomes unresponsive, jerky, and may trigger watchdog warnings.</p>
@@ -39,7 +123,7 @@ public void teleopPeriodic() {
     `,
   },
   {
-    title: '2. Watchdog Triggers & Timing',
+    title: '3. Watchdog Triggers & Timing',
     content: `
       <h5>What Causes Watchdog Triggers?</h5>
       <p>The watchdog monitors your main loop timing. When your code takes too long, you'll see watchdog warnings in the Driver Station. Common causes:</p>
@@ -77,7 +161,7 @@ public void robotPeriodic() {
     `,
   },
   {
-    title: '3. Brownouts & Voltage Sag',
+    title: '4. Brownouts & Voltage Sag',
     content: `
       <h5>Brownout vs Voltage Sag — Know the Difference!</h5>
       <p><strong>Brownout (&lt;6.3V):</strong> The roboRIO shuts down motors to protect itself. This is serious — check your battery and wiring immediately.</p>
@@ -111,10 +195,24 @@ sparkMax.enableVoltageCompensation(12.0);</pre>
         <li>Use battery beak or similar tool for quick health checks</li>
         <li>Rotate batteries during competition — don't run one battery all day</li>
       </ul>
+
+      <h5>PDH Current Monitoring</h5>
+      <p>The REV Power Distribution Hub (PDH) logs individual channel currents. When you see voltage sag, check PDH data to find which motor is drawing excessive current:</p>
+      <pre>// Log PDH currents to find the culprit
+PowerDistribution pdh = new PowerDistribution(1, ModuleType.kRev);
+
+// In periodic - check which channel is drawing the most
+for (int i = 0; i &lt; 24; i++) {
+    double current = pdh.getCurrent(i);
+    if (current &gt; 40) { // Suspiciously high
+        System.out.println("Channel " + i + ": " + current + "A");
+    }
+}</pre>
+      <p>Knowing whether the Intake (channel 5) or Climber (channel 12) is pulling 60A is the key to fixing your current limits.</p>
     `,
   },
   {
-    title: '4. CAN Bus Optimization',
+    title: '5. CAN Bus Optimization',
     content: `
       <h5>CAN Bus Bandwidth Limits</h5>
       <p>The CAN bus has limited bandwidth (~1 Mbps). With 8+ motors plus sensors, you can easily saturate it. Symptoms: delayed motor response, jerky motion, communication errors.</p>
@@ -146,10 +244,22 @@ public DriveSubsystem() {
     motor.setIdleMode(IdleMode.kBrake);
     motor.burnFlash(); // Persist settings
 }</pre>
+      <p><strong>⚠️ burnFlash() Warning:</strong> SparkMax controllers have a limited flash write cycle (~10,000 writes). Only call <code>burnFlash()</code> in initialization code — <strong>never</strong> in a periodic method or loop. Accidentally leaving it in a loop during testing can permanently damage the controller's flash memory.</p>
+
+      <h5>Phoenix 6 SignalLogger (Optional)</h5>
+      <p>CTRE Phoenix 6 devices auto-log telemetry to <code>.hoot</code> files on the roboRIO. This is useful for post-match analysis but consumes CAN bandwidth. Disable it during competition if you need every bit of bandwidth:</p>
+      <pre>import com.ctre.phoenix6.SignalLogger;
+
+@Override
+public void robotInit() {
+    // Disable Phoenix 6 auto-logging for competition
+    SignalLogger.enableAutoLogging(false);
+}</pre>
+      <p><strong>Note:</strong> Only disable this if you're NOT having CAN issues. The .hoot logs are valuable for debugging — keep them enabled during practice, then disable for competition if you need the bandwidth.</p>
     `,
   },
   {
-    title: '5. Swerve Drive Performance',
+    title: '6. Swerve Drive Performance',
     content: `
       <h5>CAN Device Count</h5>
       <p>Swerve drives are CAN-heavy: 8 motors + 4 encoders = 12 devices minimum. Add arm, intake, shooter and you can hit 20+ devices. YAGSL recommends keeping total CAN IDs under 40.</p>
@@ -186,7 +296,7 @@ public Pose2d getPose() {
     `,
   },
   {
-    title: '6. Vision Systems',
+    title: '7. Vision Systems',
     content: `
       <h5>PhotonVision Performance</h5>
       <p>Vision processing can be expensive. Key optimizations:</p>
@@ -232,7 +342,7 @@ private void updateVisionPose() {
     `,
   },
   {
-    title: '7. Autonomous & PathPlanner',
+    title: '8. Autonomous & PathPlanner',
     content: `
       <h5>NamedCommands Registration Order</h5>
       <p>Commands must be registered BEFORE loading paths that use them:</p>
@@ -276,35 +386,47 @@ public Command getAutoCommand() {
     `,
   },
   {
-    title: '8. Reading Your Log Files',
+    title: '9. Interpreting Log Patterns',
     content: `
-      <h5>What .dslog Files Tell You</h5>
-      <p>Driver Station logs contain telemetry recorded at 50Hz:</p>
-      <ul>
-        <li><strong>Voltage</strong> — 9-12V under load is normal. Below 6.3V = brownout (serious). 7-9V = voltage sag (usually OK)</li>
-        <li><strong>CPU %</strong> — Should stay below 80%; spikes indicate loop overruns</li>
-        <li><strong>CAN Usage %</strong> — Should stay below 70%; high values mean bus congestion</li>
-        <li><strong>Watchdog flags</strong> — Indicates main loop timing violations</li>
-        <li><strong>Brownout flags</strong> — Only worry if voltage actually dropped below 6.3V</li>
-      </ul>
-
-      <h5>Common Patterns</h5>
+      <h5>Quick Reference: Normal vs Problem Values</h5>
       <table style="width:100%; margin: 10px 0;">
-        <tr><td><strong>Pattern</strong></td><td><strong>Likely Cause</strong></td></tr>
-        <tr><td>High CPU + Watchdog</td><td>Loop overruns — try LiveWindow.disableAllTelemetry()</td></tr>
-        <tr><td>High CAN + Jerky motion</td><td>CAN bus congestion — reduce frame rates</td></tr>
-        <tr><td>Voltage &lt;6.3V + Brownout</td><td>True brownout — check battery, wiring, stalled motors</td></tr>
-        <tr><td>Voltage 7-10V (no brownout)</td><td>Normal voltage sag — high current draw, not a problem</td></tr>
-        <tr><td>Spikes at mode change</td><td>Heavy initialization — load paths at startup, not in autoInit</td></tr>
+        <tr><td><strong>Metric</strong></td><td><strong>Normal</strong></td><td><strong>Warning</strong></td><td><strong>Critical</strong></td></tr>
+        <tr><td>Voltage</td><td>11-13V</td><td>9-11V (sag)</td><td>&lt;6.3V (brownout)</td></tr>
+        <tr><td>CPU %</td><td>&lt;50%</td><td>50-80%</td><td>&gt;80%</td></tr>
+        <tr><td>CAN Usage</td><td>&lt;50%</td><td>50-70%</td><td>&gt;70%</td></tr>
+        <tr><td>Trip Time</td><td>&lt;5ms</td><td>5-15ms</td><td>&gt;15ms</td></tr>
+        <tr><td>Packet Loss</td><td>0%</td><td>1-5%</td><td>&gt;5%</td></tr>
       </table>
 
-      <h5>.dsevents Files</h5>
-      <p>Event logs contain timestamped messages — errors, warnings, and info. Look for:</p>
+      <h5>Common Problem Patterns</h5>
+      <table style="width:100%; margin: 10px 0;">
+        <tr><td><strong>You See...</strong></td><td><strong>This Usually Means...</strong></td><td><strong>First Fix to Try</strong></td></tr>
+        <tr><td>High CPU + Watchdog</td><td>Loop overruns</td><td>LiveWindow.disableAllTelemetry()</td></tr>
+        <tr><td>High CAN + Jerky motion</td><td>CAN bus congestion</td><td>Increase motor frame periods</td></tr>
+        <tr><td>Voltage &lt;6.3V</td><td>True brownout</td><td>Check battery & wiring</td></tr>
+        <tr><td>Voltage 7-10V (no brownout flag)</td><td>Normal voltage sag</td><td>Nothing — this is expected!</td></tr>
+        <tr><td>CPU spikes at mode change</td><td>Heavy initialization</td><td>Load paths in robotInit()</td></tr>
+        <tr><td>CAN timeout errors</td><td>Device disconnected</td><td>Check CAN wiring & IDs</td></tr>
+        <tr><td>CommandScheduler overrun</td><td>Slow commands</td><td>Profile with Tracer</td></tr>
+      </table>
+
+      <h5>What to Look For in .dsevents</h5>
+      <p>Search for these keywords to find issues quickly:</p>
       <ul>
-        <li>CAN device disconnection messages</li>
-        <li>Motor controller faults</li>
-        <li>Exception stack traces</li>
-        <li>FMS connection issues</li>
+        <li><code>timed out</code> — CAN device communication failures</li>
+        <li><code>overrun</code> — Loop timing violations</li>
+        <li><code>Exception</code> — Code errors with stack traces</li>
+        <li><code>not been registered</code> — Missing PathPlanner NamedCommands</li>
+        <li><code>Fault</code> — Motor controller hardware faults</li>
+        <li><code>Brownout</code> — Voltage protection triggered</li>
+      </ul>
+
+      <h5>WPILOG Analysis Tips</h5>
+      <ul>
+        <li>Compare motor <strong>commanded</strong> vs <strong>actual</strong> values — large gaps indicate PID tuning issues</li>
+        <li>Look for <strong>sudden changes</strong> in sensor readings — may indicate electrical noise or loose connections</li>
+        <li>Check <strong>timestamp gaps</strong> — missed logging cycles indicate overruns</li>
+        <li>Use AdvantageScope to visualize trends over time</li>
       </ul>
     `,
   },

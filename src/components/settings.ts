@@ -1,3 +1,9 @@
+/**
+ * Mentor G - Settings Modal Component
+ * Copyright (c) 2026 Gregory Donarum
+ * Licensed under MIT License with Commons Clause
+ */
+
 import { getApiKey, setApiKey, hasApiKey, useWorkerMode } from '../api/config';
 
 export function createSettingsButton(): string {
