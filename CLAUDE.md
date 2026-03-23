@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Mentor G** is a web application for FIRST Robotics Competition (FRC) teams that provides AI-powered diagnostics of robot telemetry logs. It parses `.dslog` (Driver Station log) and `.dsevents` files along with optional `Robot.java` source code, then uses the Claude API to identify performance issues and suggest fixes.
+**Mentor G** is a web application for FIRST Robotics Competition (FRC) teams that provides AI-powered diagnostics of robot telemetry logs. It parses `.dslog` (Driver Station log), `.dsevents`, and `.wpilog` (WPILib DataLog) files along with optional `Robot.java` source code, then uses the Claude API to identify performance issues and suggest fixes.
 
 Live deployment: GitHub Pages at `https://gdonarum.github.io/mentor-g/`
 
@@ -15,7 +15,7 @@ Live deployment: GitHub Pages at `https://gdonarum.github.io/mentor-g/`
 | Frontend | Vanilla TypeScript (no UI framework) |
 | Build | Vite 8.x |
 | Language | TypeScript 5.9.3 (strict mode) |
-| AI | Anthropic Claude API (`claude-sonnet-4-20250514`) |
+| AI | Anthropic Claude API (`claude-haiku-4-5-20251001`) |
 | Backend (optional) | Cloudflare Workers |
 | Database (optional) | Cloudflare D1 (SQLite) |
 
@@ -31,6 +31,7 @@ mentor-g/
 │   │   └── config.ts         # API key/worker URL management (localStorage)
 │   ├── components/
 │   │   ├── accordion.ts      # FAQ accordion (single-open behavior)
+│   │   ├── feedback.ts       # Feedback form submission
 │   │   ├── mascot.ts         # SVG mascot assets
 │   │   ├── results.ts        # Analysis results renderer
 │   │   ├── settings.ts       # Settings modal (API key UI)
@@ -38,7 +39,7 @@ mentor-g/
 │   ├── content/
 │   │   └── guide.ts          # Static performance guide content (accordion sections)
 │   ├── parsers/
-│   │   └── logs.ts           # Binary dslog + text dsevents parsers
+│   │   └── logs.ts           # Binary dslog/wpilog + text dsevents parsers
 │   ├── types/
 │   │   └── analysis.ts       # Core TypeScript interfaces
 │   ├── main.ts               # App entry point — tab switching, file state, workflow
@@ -101,7 +102,7 @@ npx wrangler dev  # Local worker at http://localhost:8787
 ### Architecture Patterns
 
 - **No framework** — pure DOM manipulation via `document.querySelector` and event listeners.
-- **Module-level state** — mutable file references (`dslogFile`, `dseventsFile`, `robotJavaFile`) live in `main.ts`.
+- **Module-level state** — mutable file references (`dslogFile`, `dseventsFile`, `wpilogFile`, `robotJavaFile`) live in `main.ts`.
 - **Separation of concerns:** parser logic stays in `parsers/`, API calls in `api/`, UI rendering in `components/`, static content in `content/`.
 - **Progressive enhancement** — the app works with a direct API key (stored in localStorage) or via an optional Cloudflare Worker proxy that hides the key.
 
@@ -118,9 +119,9 @@ The base path is `/mentor-g/` (matches the GitHub Pages repo path). Do not chang
 
 ## Core Data Flow
 
-1. User uploads `.dslog`, `.dsevents`, and/or `Robot.java` via drag-and-drop zones in `upload.ts`.
-2. `main.ts` stores file references and calls `parseDslog()` / `parseDsevents()` / `parseJavaFile()` from `parsers/logs.ts`.
-3. Parsed summaries are passed to `buildUserMessage()` in `api/anthropic.ts`, which assembles the Claude prompt (truncated: dslog/dsevents ≤ 8000 chars, Java ≤ 10000 chars).
+1. User uploads `.dslog`, `.dsevents`, `.wpilog`, and/or `Robot.java` via drag-and-drop zones in `upload.ts`.
+2. `main.ts` stores file references and calls `parseDslog()` / `parseDsevents()` / `parseWpilog()` / `parseJavaFile()` from `parsers/logs.ts`.
+3. Parsed summaries are passed to `buildUserMessage()` in `api/anthropic.ts`, which assembles the Claude prompt (truncated: dslog/dsevents ≤ 8000 chars, wpilog ≤ 10000 chars, Java ≤ 10000 chars).
 4. The request is sent to either the Anthropic API directly or the Cloudflare Worker proxy.
 5. The JSON response is parsed (with `repairJson()` fallback for malformed output) into `AnalysisResponse`.
 6. `displayResults()` in `components/results.ts` renders findings with severity badges.
@@ -129,8 +130,8 @@ The base path is `/mentor-g/` (matches the GitHub Pages repo path). Do not chang
 
 ## Claude API Integration (`src/api/anthropic.ts`)
 
-- **Model:** `claude-sonnet-4-20250514`
-- **Max tokens:** 2048
+- **Model:** `claude-haiku-4-5-20251001`
+- **Max tokens:** 4096
 - **System prompt:** Strictly constrains responses to FRC robotics diagnostics. Claude must refuse off-topic requests. Do not loosen these guardrails without careful consideration.
 - **Response format:** JSON with `{ summary, needsRobotJava, findings[] }`. The `repairJson()` function handles common LLM formatting issues (trailing commas, extra text).
 
@@ -154,9 +155,10 @@ interface AnalysisResponse {
 }
 
 interface LogFiles {
-  dslog?: { name: string; content: string };
-  dsevents?: { name: string; content: string };
-  robotJava?: { name: string; content: string };
+  dslog?: { filename: string; content: string };
+  dsevents?: { filename: string; content: string };
+  wpilog?: { filename: string; content: string };
+  robotJava?: { filename: string; content: string };
 }
 ```
 
@@ -178,10 +180,17 @@ Returns a human-readable summary with statistics and detected problem events.
 ### `parseDsevents(content: string): string`
 Parses text-based `.dsevents` files. Groups and counts errors/warnings. Returns a formatted summary.
 
-### `parseJavaFile(content: string): string`
-Returns the raw Java source (no transformation). Used for the truncation pipeline.
+### `parseWpilog(file: File): Promise<ParsedLog>`
+Parses binary `.wpilog` v1.0 format (WPILib DataLog). Extracts:
+- Entry definitions (name, type, metadata)
+- Data points for each entry with timestamps
+- Statistics (min/max/avg) for numeric entries
+- Potential issues (low voltage, high temperature, faults)
 
-> **Note:** Binary `.wpilog` parsing is listed as a TODO and not yet implemented.
+Returns a human-readable summary organized by category (e.g., `/drivetrain/`, `/arm/`).
+
+### `parseJavaFile(file: File): Promise<ParsedLog>`
+Returns the raw Java source (no transformation). Used for the truncation pipeline.
 
 ---
 
@@ -219,7 +228,6 @@ CREATE TABLE analyses (
 
 ## Known TODOs / Incomplete Features
 
-- Binary `.wpilog` parsing (not started)
 - Multi-turn conversation mode (not started)
 - Formal test suite (no tests currently)
 - Custom domain hosting for the worker
