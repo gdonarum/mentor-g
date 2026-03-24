@@ -21,7 +21,7 @@ import type { LogFiles } from './types/analysis';
 let dslogFile: ParsedLog | null = null;
 let dseventsFile: ParsedLog | null = null;
 let wpilogFile: ParsedLog | null = null;
-let robotJavaFile: ParsedLog | null = null;
+let javaFiles: ParsedLog[] = [];
 
 // DOM Elements
 const analyzeTab = document.getElementById('analyze')!;
@@ -64,12 +64,16 @@ function initUploadZones(): void {
     wpilogFile = await parseWpilog(file);
   });
 
-  // Robot.java upload handling
+  // Java files upload handling (supports multiple files)
   robotJavaInput.addEventListener('change', async () => {
-    const file = robotJavaInput.files?.[0];
-    if (file) {
-      robotJavaFile = await parseJavaFile(file);
-      // Re-run analysis with Robot.java
+    const files = robotJavaInput.files;
+    if (files && files.length > 0) {
+      javaFiles = [];
+      for (const file of Array.from(files)) {
+        const parsed = await parseJavaFile(file);
+        javaFiles.push(parsed);
+      }
+      // Re-run analysis with Java files
       await runAnalysis();
     }
   });
@@ -108,11 +112,11 @@ function buildLogFiles(): LogFiles {
     };
   }
 
-  if (robotJavaFile) {
-    logs.robotJava = {
-      filename: robotJavaFile.filename,
-      content: robotJavaFile.content,
-    };
+  if (javaFiles.length > 0) {
+    logs.javaFiles = javaFiles.map((f) => ({
+      filename: f.filename,
+      content: f.content,
+    }));
   }
 
   return logs;
@@ -136,7 +140,7 @@ async function runAnalysis(): Promise<void> {
   try {
     const analysis = await analyzeRobotLogs(logs, problem);
 
-    renderResults(analyzeTab, analysis, !!robotJavaFile, () => {
+    renderResults(analyzeTab, analysis, javaFiles.length > 0, () => {
       robotJavaInput.click();
     });
   } catch (error) {

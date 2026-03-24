@@ -34,8 +34,8 @@ export interface LogFiles {
     filename: string;
     content: string;
   };
-  robotJava?: {
+  javaFiles?: Array<{
     filename: string;
     content: string;
-  };
+  }>;
 }

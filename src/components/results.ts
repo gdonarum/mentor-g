@@ -89,8 +89,8 @@ export function createResultsSection(): string {
 
       <div class="robot-java-banner" id="robot-java-banner">
         <p id="robot-java-reason">I'd like to see your code to help further!</p>
-        <button class="upload-btn" id="robot-java-btn">Upload Java File</button>
-        <input type="file" id="robot-java-input" accept=".java" style="display: none;">
+        <button class="upload-btn" id="robot-java-btn">Upload Java Files</button>
+        <input type="file" id="robot-java-input" accept=".java" multiple style="display: none;">
       </div>
 
       <div id="findings-container"></div>
