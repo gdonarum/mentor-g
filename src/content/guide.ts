@@ -86,7 +86,61 @@ public void robotInit() {
     `,
   },
   {
-    title: '2. Loop Overruns — The #1 Issue',
+    title: '2. CAN ID Configuration & Best Practices',
+    content: `
+      <h5>CAN Bus Priority: Lower ID = Higher Priority</h5>
+      <p>The CAN protocol uses arbitration to resolve collisions when multiple devices transmit simultaneously. <strong>Devices with lower numerical IDs win arbitration and get priority access to the bus.</strong> This means your most critical devices should have the lowest CAN IDs.</p>
+
+      <h5>FRC Priority Tiers</h5>
+      <table style="width:100%; margin: 10px 0;">
+        <tr><td><strong>Priority</strong></td><td><strong>CAN IDs</strong></td><td><strong>Devices</strong></td></tr>
+        <tr><td>🔴 High</td><td>0-10</td><td>Drivetrain motors, Pigeon/Gyro, primary shooter wheels</td></tr>
+        <tr><td>🟡 Medium</td><td>11-30</td><td>Intakes, indexers, secondary shooters, climbers</td></tr>
+        <tr><td>🟢 Low</td><td>31+</td><td>Non-IMU sensors, LEDs, non-critical actuators</td></tr>
+      </table>
+      <p><strong>Why this matters:</strong> During heavy CAN traffic, your drivetrain motors (IDs 1-8) will always win arbitration over your LED controller (ID 45), ensuring responsive driving even under bus congestion.</p>
+
+      <h5>⚠️ Never Duplicate CAN IDs</h5>
+      <p><strong>Assigning the same CAN ID to two devices causes massive bus failures.</strong> Both devices will try to transmit simultaneously, corrupting each other's messages and potentially crashing your entire CAN network. Symptoms include:</p>
+      <ul>
+        <li>Random motor glitches or complete loss of control</li>
+        <li>Intermittent CAN timeout errors on multiple devices</li>
+        <li>Robot behavior that changes between power cycles</li>
+      </ul>
+
+      <h5>Organizational Strategy</h5>
+      <p>Assign IDs by subsystem to make troubleshooting easier:</p>
+      <table style="width:100%; margin: 10px 0;">
+        <tr><td><strong>Range</strong></td><td><strong>Subsystem</strong></td><td><strong>Example</strong></td></tr>
+        <tr><td>1-8</td><td>Drivetrain</td><td>4 drive motors + 4 steer motors (swerve)</td></tr>
+        <tr><td>9-10</td><td>Sensors</td><td>Pigeon 2, CANcoder</td></tr>
+        <tr><td>11-15</td><td>Intake</td><td>Intake motor, pivot motor</td></tr>
+        <tr><td>16-20</td><td>Shooter</td><td>Flywheel motors, feed motor</td></tr>
+        <tr><td>21-25</td><td>Arm/Elevator</td><td>Arm motors, elevator motors</td></tr>
+        <tr><td>26-30</td><td>Climber</td><td>Climb motors</td></tr>
+        <tr><td>31+</td><td>Misc</td><td>LEDs, extra sensors</td></tr>
+      </table>
+
+      <h5>Setting CAN IDs</h5>
+      <p>Use the appropriate vendor tool to assign CAN IDs before wiring:</p>
+      <ul>
+        <li><strong>REV SparkMax/Flex:</strong> REV Hardware Client</li>
+        <li><strong>CTRE Talon/Falcon:</strong> Phoenix Tuner X</li>
+        <li><strong>Pigeon/CANcoder:</strong> Phoenix Tuner X</li>
+      </ul>
+      <p><strong>Pro tip:</strong> Document your CAN ID assignments in a spreadsheet or your Constants.java file. When a CAN timeout occurs, you'll know exactly which device to check.</p>
+
+      <h5>Diagnosing CAN ID Issues</h5>
+      <p>If you see <code>[JSON] CAN IDs greater than 40</code> warnings combined with CAN timeouts:</p>
+      <ul>
+        <li>Check if critical devices have suboptimal (high) IDs</li>
+        <li>Consider reassigning high-priority devices to lower IDs</li>
+        <li>Verify no duplicate IDs exist using vendor tools</li>
+      </ul>
+    `,
+  },
+  {
+    title: '3. Loop Overruns — The #1 Issue',
     content: `
       <h5>What Are Loop Overruns?</h5>
       <p>The robot's main loop runs at 50Hz (every 20ms). If your code takes longer than 20ms, you get a "loop overrun" — the robot becomes unresponsive, jerky, and may trigger watchdog warnings.</p>
@@ -123,7 +177,7 @@ public void teleopPeriodic() {
     `,
   },
   {
-    title: '3. Watchdog Triggers & Timing',
+    title: '4. Watchdog Triggers & Timing',
     content: `
       <h5>What Causes Watchdog Triggers?</h5>
       <p>The watchdog monitors your main loop timing. When your code takes too long, you'll see watchdog warnings in the Driver Station. Common causes:</p>
@@ -161,7 +215,7 @@ public void robotPeriodic() {
     `,
   },
   {
-    title: '4. Brownouts & Voltage Sag',
+    title: '5. Brownouts & Voltage Sag',
     content: `
       <h5>Brownout vs Voltage Sag — Know the Difference!</h5>
       <p><strong>Brownout (&lt;6.3V):</strong> The roboRIO shuts down motors to protect itself. This is serious — check your battery and wiring immediately.</p>
@@ -212,7 +266,7 @@ for (int i = 0; i &lt; 24; i++) {
     `,
   },
   {
-    title: '5. CAN Bus Optimization',
+    title: '6. CAN Bus Optimization',
     content: `
       <h5>CAN Bus Bandwidth Limits</h5>
       <p>The CAN bus has limited bandwidth (~1 Mbps). With 8+ motors plus sensors, you can easily saturate it. Symptoms: delayed motor response, jerky motion, communication errors.</p>
@@ -259,7 +313,7 @@ public void robotInit() {
     `,
   },
   {
-    title: '6. Swerve Drive Performance',
+    title: '7. Swerve Drive Performance',
     content: `
       <h5>CAN Device Count</h5>
       <p>Swerve drives are CAN-heavy: 8 motors + 4 encoders = 12 devices minimum. Add arm, intake, shooter and you can hit 20+ devices. YAGSL recommends keeping total CAN IDs under 40.</p>
@@ -296,7 +350,7 @@ public Pose2d getPose() {
     `,
   },
   {
-    title: '7. Vision Systems',
+    title: '8. Vision Systems',
     content: `
       <h5>PhotonVision Performance</h5>
       <p>Vision processing can be expensive. Key optimizations:</p>
@@ -342,7 +396,7 @@ private void updateVisionPose() {
     `,
   },
   {
-    title: '8. Autonomous & PathPlanner',
+    title: '9. Autonomous & PathPlanner',
     content: `
       <h5>NamedCommands Registration Order</h5>
       <p>Commands must be registered BEFORE loading paths that use them:</p>
@@ -386,7 +440,7 @@ public Command getAutoCommand() {
     `,
   },
   {
-    title: '9. Interpreting Log Patterns',
+    title: '10. Interpreting Log Patterns',
     content: `
       <h5>Quick Reference: Normal vs Problem Values</h5>
       <table style="width:100%; margin: 10px 0;">
