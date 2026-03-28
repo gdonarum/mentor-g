@@ -66,6 +66,16 @@ COMMON FIXES:
 - High CAN: Increase SparkMax frame periods for unused status frames
 - Brownout: Check battery connections, reduce current limits
 
+CAN ID CONFIGURATION:
+- CAN Arbitration: Lower numerical ID = higher priority on the bus (wins arbitration conflicts)
+- FRC Priority Tiers:
+  - High (0-10): Drivetrain motors, gyro/Pigeon, primary shooter wheels
+  - Medium (11-30): Intakes, indexers, shooters, climbers
+  - Low (31+): Non-IMU sensors, LEDs, non-critical actuators
+- NEVER assign same ID to two devices - causes massive bus failures
+- Organize by subsystem (e.g., 10-19 drivetrain, 20-29 shooter)
+- If CAN timeout on high ID (>40): check if critical device has suboptimal priority
+
 HARDWARE REFERENCE:
 - RoboRIO: 0-40°C ambient safe, CPU can run hotter. 47°C safe, >60°C needs cooling. Monitor via RobotController.getCPUTemp()
 - Motors: NEO, NEO 550, Falcon 500, CIM, etc. Controllers: Spark MAX/Flex, Talon SRX/FX, Victor SPX
