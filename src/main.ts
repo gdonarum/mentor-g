@@ -140,9 +140,16 @@ async function runAnalysis(): Promise<void> {
   try {
     const analysis = await analyzeRobotLogs(logs, problem);
 
+    const uploadedFilenames = [
+      dslogFile?.filename,
+      dseventsFile?.filename,
+      wpilogFile?.filename,
+      ...javaFiles.map((f) => f.filename),
+    ].filter((n): n is string => !!n);
+
     renderResults(analyzeTab, analysis, javaFiles.length > 0, () => {
       robotJavaInput.click();
-    });
+    }, uploadedFilenames);
   } catch (error) {
     showError(analyzeTab, `Analysis failed: ${(error as Error).message}`);
   } finally {
