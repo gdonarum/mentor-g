@@ -10,7 +10,7 @@
     "db:query": "wrangler d1 execute mentor-g-feedback --command"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240117.0",
+    "@cloudflare/workers-types": "^4.20260402.1",
     "wrangler": "^4.75.0"
   }
 }
