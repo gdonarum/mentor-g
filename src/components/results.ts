@@ -6,6 +6,7 @@
 
 import type { AnalysisResponse, Finding } from '../types/analysis';
 import { mascotSmallSvg } from './mascot';
+import { generatePdfReport } from './pdf';
 
 function escapeHtml(text: string): string {
   const div = document.createElement('div');
@@ -40,7 +41,8 @@ export function renderResults(
   container: HTMLElement,
   analysis: AnalysisResponse,
   hasRobotJava: boolean,
-  onUploadRobotJava: () => void
+  onUploadRobotJava: () => void,
+  filenames: string[] = []
 ): void {
   const resultsDiv = container.querySelector('#results') as HTMLElement;
   const summaryText = container.querySelector('#summary-text') as HTMLElement;
@@ -48,6 +50,7 @@ export function renderResults(
   const robotJavaBanner = container.querySelector('#robot-java-banner') as HTMLElement;
   const robotJavaReason = container.querySelector('#robot-java-reason') as HTMLElement;
   const robotJavaBtn = container.querySelector('#robot-java-btn') as HTMLElement;
+  const pdfBtn = container.querySelector('#pdf-report-btn') as HTMLElement;
 
   // Summary
   summaryText.textContent = analysis.summary;
@@ -71,6 +74,9 @@ export function renderResults(
     });
   }
 
+  // PDF report button
+  pdfBtn.onclick = () => generatePdfReport(analysis, filenames);
+
   resultsDiv.classList.add('visible');
 }
 
@@ -80,6 +86,7 @@ export function createResultsSection(): string {
       <div class="results-header">
         ${mascotSmallSvg}
         <h3>Mentor G's Analysis</h3>
+        <button class="pdf-btn" id="pdf-report-btn" title="Download PDF Report">&#128438; Download PDF</button>
       </div>
 
       <div class="summary-box" id="summary-box">
